@@ -2,6 +2,10 @@ INCLUDE Irvine32.inc
 .data
 fileName BYTE "out.mid", 0
 
+tempoPrompt BYTE "Please enter a tempo range. To set a specific tempo, type it in for both the min and the max.", 0
+minTempoPrompt BYTE "Enter the minimum tempo: ", 0
+maxTempoPrompt BYTE "Enter the maximum tempo: ", 0
+
 ; header
 headerChunk db "MThd",                          ; file identifier
                0, 0, 0, 6,                      ; length of remaining header chunk
@@ -13,13 +17,12 @@ headerChunkLen equ $-headerChunk                ; length of the header
 ; meta track
 track0Chunk db 4dh, 54h, 72h, 6bh,              ; track identifier
                0, 0, 0, 25,                     ; length of remainig track data
-               0, 0FFh, 51h, 3, ?, ?, ?,        ; tempo of song
+               0, 0FFh, 51h, 3, 0, 0, 0,        ; tempo of song
                0, 0FFh, 58h, 4, 4, 2, 18h, 8,   ; time signature of song
                0, 0FFh, 59h, 2, 0, 0,           ; key signature of song
                00h, 0FFh, 2Fh, 0                ; end of track
 track0ChunkLen equ $-track0Chunk                ; length of the entire track
-minTempo dword 120
-tempoRange dword 120
+minTempo dword ?
 
 ; piano track
 track1Chunk db "MTrk",                          ; track identifier
@@ -39,7 +42,7 @@ track2ChunkLen equ $-track2Chunk                ; length of the entire track
 
 ; unused track
 track3Chunk db "MTrk",                          ; track identifier
-               0, 0, 0, 3,                      ; length of remaining track data
+               0, 0, 0, 4,                      ; length of remaining track data
                0, 0ffh, 2fh, 0                  ; end of track
 track3ChunkLen equ $-track3Chunk                ; length of the entire track
 
@@ -75,7 +78,19 @@ main PROC
     mov edx, OFFSET headerChunk
     call WriteToFile
     call Randomize
-    mov eax, tempoRange
+
+    mov edx, OFFSET tempoPrompt
+    call WriteString
+    call crLf
+    mov edx, OFFSET minTempoPrompt
+    call WriteString
+    call readInt
+    mov minTempo, eax
+    mov edx, OFFSET maxTempoPrompt
+    call WriteString
+    call readInt
+    sub eax, minTempo
+    add eax, 1
     call RandomRange
     add eax, minTempo
     mov ebx, eax
@@ -153,7 +168,7 @@ guitarPattern0:
     mov eax, ecx
     mov ebx, 40h
     mul bx
-    add eax, 0eh
+    add eax, 0bh
     mov edi, eax
 
     ; bottom guitar note on
@@ -262,7 +277,7 @@ guitarPattern1:
     mov eax, ecx
     mov ebx, 40h
     mul bx
-    add eax, 0eh
+    add eax, 0bh
     mov edi, eax
     
     ; bottom guitar note on
@@ -371,7 +386,7 @@ guitarPattern2:
     mov eax, ecx
     mov ebx, 40h
     mul bx
-    add eax, 0eh
+    add eax, 0bh
     mov edi, eax
     
     ; bottom guitar note on
