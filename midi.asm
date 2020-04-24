@@ -6,6 +6,30 @@ tempoPrompt BYTE "Please enter a tempo range. To set a specific tempo, type it i
 minTempoPrompt BYTE "Enter the minimum tempo: ", 0
 maxTempoPrompt BYTE "Enter the maximum tempo: ", 0
 
+chordNames BYTE "M", 0,
+                "m", 0,
+                "5", 0,
+                "7", 0,
+                "M7", 0,
+                "m7", 0,
+                "mM7", 0,
+                "6", 0,
+                "m6", 0,
+                "add9", 0,
+                "madd9", 0,
+                "7b5", 0,
+                "7#5", 0,
+                "m7b5", 0,
+                "m7#5", 0
+
+chordVals BYTE 4, 7, 12, 3, 7, 12,              ; M & m
+               7, 12, 19, 4, 7, 10,             ; 5 & 7
+               4, 7, 11, 3, 7, 10, 3, 7, 11,    ; M7, m7, & mM7
+               4, 7, 9, 3, 7, 9,                ; 6 & m6
+               2, 4, 7, 2, 3, 7,                ; add9 & madd9
+               4, 6, 10, 4, 8, 10,              ; 7b5 & 7#5
+               3, 6, 10, 3, 8, 10               ; m7b5 & m7#5
+
 ; header
 headerChunk db "MThd",                          ; file identifier
                0, 0, 0, 6,                      ; length of remaining header chunk
@@ -48,6 +72,7 @@ track3ChunkLen equ $-track3Chunk                ; length of the entire track
 
 cPitch dword 3Ch                                ; middle c in midi
 currPitch db ?                                  ; variable to store the root pitch of the current chord
+currChord dword ?                                  ; variable to store the form of the current chord
 maxMeasures dword 64                            ; how many measures to generate
 .data?
 hFile  HANDLE ?                                 ; handle to the file
@@ -119,21 +144,29 @@ notes:
     mul bx
     add eax, 11
     mov edi, eax
+    mov eax, 15
+    call RandomRange
+    mov ebx, 3
+    mul bx
+    mov currChord, eax
+
     ; bottom note on
     mov dl, currPitch
     mov bl, 90h
     call noteEventTrack1
 
     ; second note on
-    add edx, 4
+    add dl, chordVals[eax]
     call noteEventTrack1
 
     ; third note on
-    add edx, 3
+    mov dl, currPitch
+    add dl, chordVals[eax+1]
     call noteEventTrack1
 
     ; top note on
-    add edx, 5
+    mov dl, currPitch
+    add dl, chordVals[eax+2]
     call noteEventTrack1
 
     ; bottom note off
@@ -142,20 +175,23 @@ notes:
     mov track1Chunk[1+edi], 00h
     mov track1Chunk[2+edi], 80h
     mov track1Chunk[3+edi], dl
-    mov track1Chunk[4+edi], 0
+    mov track1Chunk[4+edi], 40h
     add edi, 5
 
     ; second note off
-    add edx, 4
+    mov dl, currPitch
+    add dl, chordVals[eax]
     mov bl, 80h
     CALL noteEventTrack1
 
     ; third note off
-    add edx, 3
+    mov dl, currPitch
+    add dl, chordVals[eax+1]
     CALL noteEventTrack1
 
     ; top note off
-    add edx, 5
+    mov dl, currPitch
+    add dl, chordVals[eax+2]
     CALL noteEventTrack1
 
     mov eax, 3
@@ -170,6 +206,7 @@ guitarPattern0:
     mul bx
     add eax, 0bh
     mov edi, eax
+    mov eax, currChord
 
     ; bottom guitar note on
     mov dl, currPitch
@@ -179,7 +216,9 @@ guitarPattern0:
     call noteEventTrack2
 
     ; top guitar note on
-    add dl, 12
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax+2]
     mov bl, 91h
     mov bh, 30h
     call noteEventTrack2
@@ -192,25 +231,33 @@ guitarPattern0:
     call noteEventTrack2
 
     ; second guitar note on
-    add dl, 4
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax]
     mov bl, 91h
     mov bh, 0
     call noteEventTrack2
 
     ; top guitar note off
-    add dl, 8
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax+2]
     mov bl, 81h
     mov bh, 30h
     call noteEventTrack2
     
     ; third guitar note on
-    sub dl, 5
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax+1]
     mov bl, 91h
     mov bh, 0
     call noteEventTrack2
 
     ; second guitar note off
-    sub dl, 3
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax+1]
     mov bl, 81h
     mov bh, 30h
     call noteEventTrack2
@@ -223,13 +270,17 @@ guitarPattern0:
     call noteEventTrack2
 
     ; third guitar note off
-    add dl, 4
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax+1]
     mov bl, 81h
     mov bh, 30h
     call noteEventTrack2
 
     ; top guitar note on
-    add dl, 8
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax+2]
     mov bl, 91h
     mov bh, 0
     call noteEventTrack2
@@ -242,35 +293,45 @@ guitarPattern0:
     call noteEventTrack2
 
     ; second guitar note on
-    add dl, 4
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax]
     mov bl, 91h
     mov bh, 0
     call noteEventTrack2
 
     ; top guitar note off
-    add dl, 8
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax+2]
     mov bl, 81h
     mov bh, 30h
     call noteEventTrack2
 
     ; third guitar note on
-    sub dl, 5
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax+1]
     mov bl, 91h
     mov bh, 0
     call noteEventTrack2
 
     ; second guitar note off
-    sub dl, 3
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax]
     mov bl, 81h
     mov bh, 30h
     call noteEventTrack2
 
     ; third guitar note off
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax+1]
     mov track2Chunk[edi], 0
-    mov track2Chunk[1+edi], 91h
-    add dl, 4
+    mov track2Chunk[1+edi], 81h
     mov track2Chunk[2+edi], dl
-    mov track2Chunk[3+edi], 0
+    mov track2Chunk[3+edi], 40h
     inc ecx
     jmp notes
 guitarPattern1:
@@ -279,6 +340,7 @@ guitarPattern1:
     mul bx
     add eax, 0bh
     mov edi, eax
+    mov eax, currChord
     
     ; bottom guitar note on
     mov dl, currPitch
@@ -288,7 +350,9 @@ guitarPattern1:
     call noteEventTrack2
 
     ; third guitar note on
-    add dl, 7
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax+1]
     mov bl, 91h
     mov bh, 30h
     call noteEventTrack2
@@ -301,25 +365,33 @@ guitarPattern1:
     call noteEventTrack2
 
     ; second guitar note on
-    add dl, 4
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax]
     mov bl, 91h
     mov bh, 0
     call noteEventTrack2
 
     ; third guitar note off
-    add dl, 3
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax+1]
     mov bl, 81h
     mov bh, 30h
     call noteEventTrack2
     
     ; top guitar note on
-    add dl, 5
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax+2]
     mov bl, 91h
     mov bh, 0
     call noteEventTrack2
 
     ; second guitar note off
-    sub dl, 8
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax]
     mov bl, 81h
     mov bh, 30h
     call noteEventTrack2
@@ -332,13 +404,17 @@ guitarPattern1:
     call noteEventTrack2
 
     ; top guitar note off
-    add dl, 12
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax+2]
     mov bl, 81h
     mov bh, 30h
     call noteEventTrack2
 
     ; third guitar note on
-    sub dl, 5
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax+1]
     mov bl, 91h
     mov bh, 0
     call noteEventTrack2
@@ -351,35 +427,45 @@ guitarPattern1:
     call noteEventTrack2
 
     ; second guitar note on
-    add dl, 4
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax]
     mov bl, 91h
     mov bh, 0
     call noteEventTrack2
 
     ; third guitar note off
-    add dl, 3
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax+1]
     mov bl, 81h
     mov bh, 30h
     call noteEventTrack2
 
     ; top guitar note on
-    add dl, 5
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax+2]
     mov bl, 91h
     mov bh, 0
     call noteEventTrack2
 
     ; second guitar note off
-    sub dl, 8
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax]
     mov bl, 81h
     mov bh, 30h
     call noteEventTrack2
 
     ; top guitar note off
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax+2]
     mov track2Chunk[edi], 0
-    mov track2Chunk[1+edi], 91h
-    add dl, 8
+    mov track2Chunk[1+edi], 81h
     mov track2Chunk[2+edi], dl
-    mov track2Chunk[3+edi], 0
+    mov track2Chunk[3+edi], 40h
     inc ecx
     jmp notes
 guitarPattern2:
@@ -388,6 +474,7 @@ guitarPattern2:
     mul bx
     add eax, 0bh
     mov edi, eax
+    mov eax, currChord
     
     ; bottom guitar note on
     mov dl, currPitch
@@ -397,7 +484,9 @@ guitarPattern2:
     call noteEventTrack2
 
     ; top guitar note on
-    add dl, 12
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax+2]
     mov bl, 91h
     mov bh, 0
     call noteEventTrack2
@@ -410,25 +499,33 @@ guitarPattern2:
     call noteEventTrack2
 
     ; second guitar note on
-    add dl, 4
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax]
     mov bl, 91h
     mov bh, 0
     call noteEventTrack2
 
     ; top guitar note off
-    add dl, 8
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax+2]
     mov bl, 81h
     mov bh, 30h
     call noteEventTrack2
     
     ; third guitar note on
-    sub dl, 5
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax+1]
     mov bl, 91h
     mov bh, 0
     call noteEventTrack2
 
     ; second guitar note off
-    sub dl, 3
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax]
     mov bl, 81h
     mov bh, 30h
     call noteEventTrack2
@@ -441,13 +538,17 @@ guitarPattern2:
     call noteEventTrack2
 
     ; third guitar note off
-    add dl, 4
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax+1]
     mov bl, 81h
     mov bh, 30h
     call noteEventTrack2
 
     ; top guitar note on
-    add dl, 8
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax+2]
     mov bl, 91h
     mov bh, 0
     call noteEventTrack2
@@ -460,35 +561,45 @@ guitarPattern2:
     call noteEventTrack2
 
     ; second guitar note on
-    add dl, 4
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax]
     mov bl, 91h
     mov bh, 0
     call noteEventTrack2
 
     ; top guitar note off
-    add dl, 8
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax+2]
     mov bl, 81h
     mov bh, 30h
     call noteEventTrack2
 
     ; third guitar note on
-    sub dl, 5
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax+1]
     mov bl, 91h
     mov bh, 0
     call noteEventTrack2
 
     ; second guitar note off
-    sub dl, 3
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax]
     mov bl, 81h
     mov bh, 30h
     call noteEventTrack2
 
     ; third guitar note off
+    mov dl, currPitch
+    sub dl, 12
+    add dl, chordVals[eax+1]
     mov track2Chunk[edi], 0
-    mov track2Chunk[1+edi], 91h
-    add dl, 4
+    mov track2Chunk[1+edi], 81h
     mov track2Chunk[2+edi], dl
-    mov track2Chunk[3+edi], 0
+    mov track2Chunk[3+edi], 40h
     inc ecx
     jmp notes
 write:
