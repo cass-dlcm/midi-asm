@@ -1,10 +1,12 @@
 INCLUDE Irvine32.inc
 .data
-fileName BYTE "out.mid", 0
+fileName BYTE 0ffh DUP(0)
 
+fileNamePrompt BYTE "Enter the filename: ", 0
 tempoPrompt BYTE "Please enter a tempo range. To set a specific tempo, type it in for both the min and the max.", 0
 minTempoPrompt BYTE "Enter the minimum tempo: ", 0
 maxTempoPrompt BYTE "Enter the maximum tempo: ", 0
+outTempoPrompt BYTE "The generated tempo is: ", 0
 
 chordNames BYTE "M", 0,
                 "m", 0,
@@ -96,7 +98,11 @@ noteEventTrack2 PROC
 noteEventTrack2 ENDP
 
 main PROC
+    mov edx, OFFSET fileNamePrompt
+    call WriteString
     mov edx, OFFSET fileName
+    mov ecx, 0ffh
+    call ReadString
     call CreateOutputFile
     mov hFile,eax
     mov ecx, headerChunkLen
@@ -118,6 +124,11 @@ main PROC
     add eax, 1
     call RandomRange
     add eax, minTempo
+    mov edx, OFFSET outTempoPrompt
+    call WriteString
+    call WriteDec
+    call crLf
+
     mov ebx, eax
     mov eax, 60000000
     mov edx, 0
@@ -127,10 +138,12 @@ main PROC
     mov track0Chunk[0dh], al
     shr eax, 8
     mov track0Chunk[0ch], al
+
     mov ecx, track0ChunkLen
     mov eax, hFile
     mov edx, OFFSET track0Chunk
     call WriteToFile
+
     mov ecx, 0
 notes: 
     cmp ecx, maxMeasures
