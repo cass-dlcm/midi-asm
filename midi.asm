@@ -7,6 +7,10 @@ tempoPrompt BYTE "Please enter a tempo range. To set a specific tempo, type it i
 minTempoPrompt BYTE "Enter the minimum tempo: ", 0
 maxTempoPrompt BYTE "Enter the maximum tempo: ", 0
 outTempoPrompt BYTE "The generated tempo is: ", 0
+measurePrompt BYTE "Please enter a measure range. To set a specific number of measures, type it in for both the min and the max.", 0
+minMeasurePrompt BYTE "Enter the minimum number of measures: ", 0
+maxMeasurePrompt BYTE "Enter the maximum number of measures: ", 0
+outMeasurePrompt BYTE "The generated number of measures is: ", 0
 
 chordNames BYTE "M", 0,
                 "m", 0,
@@ -62,13 +66,11 @@ track2Chunk dword ? ;db "MTrk",                          ; track identifier
                ;0, 0FFh, 2Fh, 0                  ; end of track
 track2ChunkLen dword 100fh ;equ $-track2Chunk                ; length of the entire track
 
-; unused track
-
-
 cPitch dword 3Ch                                ; middle c in midi
 currPitch db ?                                  ; variable to store the root pitch of the current chord
 currChord db ?                               ; variable to store the form of the current chord
-maxMeasures dword 64                            ; how many measures to generate
+minMeasures dword ?                             ; minimum number of measrues to generate
+measureCount dword ?                            ; variable of measures to generate
 .data?
 hFile  HANDLE ?                                 ; handle to the file
 hHeap  HANDLE ?                                 ; handle to the heap
@@ -155,6 +157,39 @@ main PROC
         jmp closeAndQuit
     .endif
 
+    ; prompt for measures and display the result to the user
+    mov edx, OFFSET measurePrompt
+    call WriteString
+    call crLf
+    mov edx, OFFSET minMeasurePrompt
+    call WriteString
+    call readInt
+    mov minMeasures, eax
+    mov edx, OFFSET maxMeasurePrompt
+    call WriteString
+    call readInt
+    sub eax, minMeasures
+    add eax, 1
+    call RandomRange
+    add eax, minMeasures
+    mov edx, OFFSET outMeasurePrompt
+    call WriteString
+    call WriteDec
+    call crLf
+    mov measureCount, eax
+    mov ebx, 33
+    mov edx, 0
+    mul ebx
+    add eax, 0fh
+    mov track1ChunkLen, eax
+    mov eax, measureCount
+    mov ebx, 40h
+    mov edx, 0
+    mul ebx
+    add eax, 0fh
+    mov track2ChunkLen, eax
+
+    ; allocate memory for track 1
     invoke HeapAlloc, hHeap, HEAP_ZERO_MEMORY, track1ChunkLen
     .if eax == NULL
         call WriteWindowsMsg
@@ -162,6 +197,7 @@ main PROC
     .endif
     mov track1Chunk, eax
 
+    ; set meta info for track 1
     mov edi, track1Chunk
     mov [edi], BYTE PTR "M"
     mov [edi+1], BYTE PTR "T"
@@ -184,6 +220,7 @@ main PROC
     mov [edi-2], BYTE PTR 2fh
     mov [edi-1], BYTE PTR 0
 
+    ; allocate memory for track 2
     invoke HeapAlloc, hHeap, HEAP_ZERO_MEMORY, track2ChunkLen
     .if eax == NULL
         call WriteWindowsMsg
@@ -191,6 +228,7 @@ main PROC
     .endif
     mov track2Chunk, eax
 
+    ; set meta info for track 2
     mov edi, track2Chunk
     mov [edi], BYTE PTR "M"
     mov [edi+1], BYTE PTR "T"
@@ -217,7 +255,7 @@ main PROC
     mov ecx, 0
 
 notes: 
-    cmp ecx, maxMeasures
+    cmp ecx, measureCount
     je write
     mov eax, 12
     call RandomRange
