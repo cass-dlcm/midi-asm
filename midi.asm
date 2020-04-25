@@ -10,7 +10,7 @@ maxTempoPrompt BYTE "Enter the maximum tempo: ", 0
 outTempoPrompt BYTE "The generated tempo is: ", 0
 modeAskMsg BYTE "Choose a mode; Sequencer (S) or Random (R): ", 0
 sequenceCountAskMsg BYTE "Enter the number of unique sequences: ", 0
-sequenceMeasuresCountAskMsgP1 BYTE "Enter tne number of measures in sequence " , 0
+sequenceMeasuresCountAskMsgP1 BYTE "Enter the number of measures in sequence " , 0
 sequenceMeasuresCountAskMsgP2 BYTE ": ", 0
 measurePrompt BYTE "Please enter a measure range. To set a specific number of measures, type it in for both the min and the max.", 0
 minMeasurePrompt BYTE "Enter the minimum number of measures: ", 0
