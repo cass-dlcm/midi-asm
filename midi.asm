@@ -67,17 +67,16 @@ track2Chunk db "MTrk",                          ; track identifier
 track2ChunkLen equ $-track2Chunk                ; length of the entire track
 
 ; unused track
-track3Chunk db "MTrk",                          ; track identifier
-               0, 0, 0, 4,                      ; length of remaining track data
-               0, 0ffh, 2fh, 0                  ; end of track
-track3ChunkLen equ $-track3Chunk                ; length of the entire track
+track3Chunk dword ?
+track3ChunkLen dword 0fh
 
 cPitch dword 3Ch                                ; middle c in midi
 currPitch db ?                                  ; variable to store the root pitch of the current chord
-currChord dword ?                                  ; variable to store the form of the current chord
+currChord db ?                               ; variable to store the form of the current chord
 maxMeasures dword 64                            ; how many measures to generate
 .data?
 hFile  HANDLE ?                                 ; handle to the file
+hHeap  HANDLE ?                                 ; handle to the heap
 .code
 noteEvent PROC
     mov [edi], bh                     ; delta time
@@ -92,6 +91,13 @@ noteEvent ENDP
 main PROC
     ; initialize the randomizer
     call Randomize
+
+    invoke GetProcessHeap
+    .if eax == NULL
+        call WriteWindowsMsg
+        jmp quit
+    .endif
+    mov hHeap, eax
     
     ; prompt for the filename and create the file, creating the header chunk
     mov edx, OFFSET fileNamePrompt
@@ -154,6 +160,35 @@ main PROC
         jmp closeAndQuit
     .endif
 
+    invoke HeapAlloc, hHeap, HEAP_ZERO_MEMORY, track3ChunkLen
+    .if eax == NULL
+        call WriteWindowsMsg
+        jmp closeAndQuit
+    .endif
+    mov track3Chunk, eax
+
+    mov edi, track3Chunk
+    mov [edi], BYTE PTR "M"
+    mov [edi+1], BYTE PTR "T"
+    mov [edi+2], BYTE PTR "r"
+    mov [edi+3], BYTE PTR "k"
+    mov eax, track3ChunkLen
+    sub eax, 8
+    mov [edi+7], al
+    mov [edi+6], ah
+    shr eax, 8
+    mov [edi+5], ah
+    shr eax, 8
+    mov [edi+4], ah
+    mov [edi+8], BYTE PTR 0
+    mov [edi+9], BYTE PTR 0C0h
+    mov [edi+0ah], BYTE PTR 0
+    add edi, track3ChunkLen
+    mov [edi-4], BYTE PTR 0
+    mov [edi-3], BYTE PTR 0ffh
+    mov [edi-2], BYTE PTR 2fh
+    mov [edi-1], BYTE PTR 0
+
     ; prepare counter for looping
     mov ecx, 0
 
@@ -165,17 +200,21 @@ notes:
     add eax, cPitch
     mov currPitch, al
     mov eax, ecx
+    mov edx, 0
     mov ebx, 33
-    mul bx
+    mul ebx
     add eax, 11
     mov edi, eax
+    mov edx, 0
     mov eax, 15
     call RandomRange
     mov ebx, 3
-    mul bx
-    mov currChord, eax
-    mov esi, currChord
-    add esi, OFFSET chordVals
+    mul ebx
+    mov currChord, al
+    mov eax, 0
+    mov al, currChord
+    mov esi, OFFSET chordVals
+    add esi, eax
     add edi, OFFSET track1Chunk
     mov bh, 0
 
@@ -233,12 +272,15 @@ notes:
 guitarPattern0:
     ; prepare edi to point to the chunk
     mov eax, ecx
+    mov edx, 0
     mov ebx, 40h
-    mul bx
+    mul ebx
     add eax, 0bh
     mov edi, eax
-    mov esi, currChord
-    add esi, OFFSET chordVals
+    mov eax, 0
+    mov al, currChord
+    mov esi, OFFSET chordVals
+    add esi, eax
     add edi, OFFSET track2Chunk
 
     ; bottom guitar note on
@@ -372,11 +414,14 @@ guitarPattern0:
 guitarPattern1:
     mov eax, ecx
     mov ebx, 40h
-    mul bx
+    mov edx, 0
+    mul ebx
     add eax, 0bh
     mov edi, eax
-    mov esi, currChord
-    add esi, OFFSET chordVals
+    mov eax, 0
+    mov al, currChord
+    mov esi, OFFSET chordVals
+    add esi, eax
     add edi, OFFSET track2Chunk
     
     ; bottom guitar note on
@@ -503,16 +548,21 @@ guitarPattern1:
     mov [1+edi], BYTE PTR 81h
     mov [2+edi], dl
     mov [3+edi], BYTE PTR 40h
+    
     inc ecx
     jmp notes
+
 guitarPattern2:
     mov eax, ecx
     mov ebx, 40h
-    mul bx
+    mov edx, 0
+    mul ebx
     add eax, 0bh
     mov edi, eax
-    mov esi, currChord
-    add esi, OFFSET chordVals
+    mov eax, 0
+    mov al, currChord
+    mov esi, OFFSET chordVals
+    add esi, eax
     add edi, OFFSET track2Chunk
     
     ; bottom guitar note on
@@ -652,7 +702,7 @@ write:
     .if EAX == 0
         call WriteWindowsMsg
         jmp closeAndQuit
-    .endif
+   .endif
 
     ; write the second track
     mov ecx, track2ChunkLen
@@ -667,7 +717,7 @@ write:
     ; write the third track
     mov ecx, track3ChunkLen
     mov eax, hFile
-    mov edx, OFFSET track3Chunk
+    mov edx, track3Chunk
     call WriteToFile
     .if EAX == 0
         call WriteWindowsMsg
