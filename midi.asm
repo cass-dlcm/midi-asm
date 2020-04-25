@@ -36,7 +36,7 @@ chordVals BYTE 4, 7, 12, 3, 7, 12,              ; M & m
 headerChunk db "MThd",                          ; file identifier
                0, 0, 0, 6,                      ; length of remaining header chunk
                0, 1,                            ; midi format
-               0, 4,                            ; number of tracks
+               0, 3,                            ; number of tracks
                0, 60h                           ; number of divisions in a quarter note
 headerChunkLen equ $-headerChunk                ; length of the header
 
@@ -51,24 +51,19 @@ track0ChunkLen equ $-track0Chunk                ; length of the entire track
 minTempo dword ?
 
 ; piano track
-track1Chunk db "MTrk",                          ; track identifier
-               0, 0, 8h, 47h,                   ; length of remaining track data
-               0, 0C0h, 0,                      ; set the instrument to piano
-               840h DUP(0),                     ; space for note events
-               0, 0FFh, 2Fh, 0                  ; end of track
-track1ChunkLen equ $-track1Chunk
+track1Chunk dword ?
+track1ChunkLen dword 84fh
 
 ; guitar track
-track2Chunk db "MTrk",                          ; track identifier
-               0, 0, 10h, 07h,                  ; length of remaining track data
-               0, 0C1h, 25,                     ; set the instrument to guitar
-               1000h DUP(0),                    ; space for note events
-               0, 0FFh, 2Fh, 0                  ; end of track
-track2ChunkLen equ $-track2Chunk                ; length of the entire track
+track2Chunk dword ? ;db "MTrk",                          ; track identifier
+               ;0, 0, 10h, 07h,                  ; length of remaining track data
+               ;0, 0C1h, 25,                     ; set the instrument to guitar
+               ;1000h DUP(0),                    ; space for note events
+               ;0, 0FFh, 2Fh, 0                  ; end of track
+track2ChunkLen dword 100fh ;equ $-track2Chunk                ; length of the entire track
 
 ; unused track
-track3Chunk dword ?
-track3ChunkLen dword 0fh
+
 
 cPitch dword 3Ch                                ; middle c in midi
 currPitch db ?                                  ; variable to store the root pitch of the current chord
@@ -160,19 +155,19 @@ main PROC
         jmp closeAndQuit
     .endif
 
-    invoke HeapAlloc, hHeap, HEAP_ZERO_MEMORY, track3ChunkLen
+    invoke HeapAlloc, hHeap, HEAP_ZERO_MEMORY, track1ChunkLen
     .if eax == NULL
         call WriteWindowsMsg
         jmp closeAndQuit
     .endif
-    mov track3Chunk, eax
+    mov track1Chunk, eax
 
-    mov edi, track3Chunk
+    mov edi, track1Chunk
     mov [edi], BYTE PTR "M"
     mov [edi+1], BYTE PTR "T"
     mov [edi+2], BYTE PTR "r"
     mov [edi+3], BYTE PTR "k"
-    mov eax, track3ChunkLen
+    mov eax, track1ChunkLen
     sub eax, 8
     mov [edi+7], al
     mov [edi+6], ah
@@ -183,7 +178,36 @@ main PROC
     mov [edi+8], BYTE PTR 0
     mov [edi+9], BYTE PTR 0C0h
     mov [edi+0ah], BYTE PTR 0
-    add edi, track3ChunkLen
+    add edi, track1ChunkLen
+    mov [edi-4], BYTE PTR 0
+    mov [edi-3], BYTE PTR 0ffh
+    mov [edi-2], BYTE PTR 2fh
+    mov [edi-1], BYTE PTR 0
+
+    invoke HeapAlloc, hHeap, HEAP_ZERO_MEMORY, track2ChunkLen
+    .if eax == NULL
+        call WriteWindowsMsg
+        jmp closeAndQuit
+    .endif
+    mov track2Chunk, eax
+
+    mov edi, track2Chunk
+    mov [edi], BYTE PTR "M"
+    mov [edi+1], BYTE PTR "T"
+    mov [edi+2], BYTE PTR "r"
+    mov [edi+3], BYTE PTR "k"
+    mov eax, track2ChunkLen
+    sub eax, 8
+    mov [edi+7], al
+    mov [edi+6], ah
+    shr eax, 8
+    mov [edi+5], ah
+    shr eax, 8
+    mov [edi+4], ah
+    mov [edi+8], BYTE PTR 0
+    mov [edi+9], BYTE PTR 0C1h
+    mov [edi+0ah], BYTE PTR 25
+    add edi, track2ChunkLen
     mov [edi-4], BYTE PTR 0
     mov [edi-3], BYTE PTR 0ffh
     mov [edi-2], BYTE PTR 2fh
@@ -215,7 +239,7 @@ notes:
     mov al, currChord
     mov esi, OFFSET chordVals
     add esi, eax
-    add edi, OFFSET track1Chunk
+    add edi, track1Chunk
     mov bh, 0
 
     ; bottom note on
@@ -281,7 +305,7 @@ guitarPattern0:
     mov al, currChord
     mov esi, OFFSET chordVals
     add esi, eax
-    add edi, OFFSET track2Chunk
+    add edi, track2Chunk
 
     ; bottom guitar note on
     mov dl, currPitch
@@ -422,7 +446,7 @@ guitarPattern1:
     mov al, currChord
     mov esi, OFFSET chordVals
     add esi, eax
-    add edi, OFFSET track2Chunk
+    add edi, track2Chunk
     
     ; bottom guitar note on
     mov dl, currPitch
@@ -563,7 +587,7 @@ guitarPattern2:
     mov al, currChord
     mov esi, OFFSET chordVals
     add esi, eax
-    add edi, OFFSET track2Chunk
+    add edi, track2Chunk
     
     ; bottom guitar note on
     mov dl, currPitch
@@ -697,7 +721,7 @@ write:
     ; write the first track
     mov ecx, track1ChunkLen
     mov eax, hFile
-    mov edx, OFFSET track1Chunk
+    mov edx, track1Chunk
     call WriteToFile
     .if EAX == 0
         call WriteWindowsMsg
@@ -707,17 +731,7 @@ write:
     ; write the second track
     mov ecx, track2ChunkLen
     mov eax, hFile
-    mov edx, OFFSET track2Chunk
-    call WriteToFile
-    .if EAX == 0
-        call WriteWindowsMsg
-        jmp closeAndQuit
-    .endif
-
-    ; write the third track
-    mov ecx, track3ChunkLen
-    mov eax, hFile
-    mov edx, track3Chunk
+    mov edx, track2Chunk
     call WriteToFile
     .if EAX == 0
         call WriteWindowsMsg
