@@ -79,37 +79,41 @@ maxMeasures dword 64                            ; how many measures to generate
 .data?
 hFile  HANDLE ?                                 ; handle to the file
 .code
-noteEventTrack1 PROC
-    mov track1Chunk[edi], 0                     ; delta time
-    mov track1Chunk[edi+1], bl                  ; note event, channel 0
-    mov track1Chunk[edi+2], dl                  ; pitch in dl register
-    mov track1Chunk[edi+3], 40h                 ; velocity of 64 (medium)
+noteEvent PROC
+    mov [edi], bh                     ; delta time
+    mov [edi+1], bl                  ; note event, channel 0
+    mov [edi+2], dl                  ; pitch in dl register
+    mov [edi+3], BYTE PTR 40h                 ; velocity of 64 (medium)
     add edi, 4
     ret
-noteEventTrack1 ENDP
+noteEvent ENDP
 
-noteEventTrack2 PROC
-    mov track2Chunk[edi], bh                    ; delta time
-    mov track2Chunk[edi+1], bl                  ; note event, channel 0
-    mov track2Chunk[edi+2], dl                  ; pitch in dl register
-    mov track2Chunk[edi+3], 40h                 ; velocity of 64 (medium)
-    add edi, 4
-    ret
-noteEventTrack2 ENDP
 
 main PROC
+    ; initialize the randomizer
+    call Randomize
+    
+    ; prompt for the filename and create the file, creating the header chunk
     mov edx, OFFSET fileNamePrompt
     call WriteString
     mov edx, OFFSET fileName
     mov ecx, 0ffh
     call ReadString
     call CreateOutputFile
+    .if EAX == INVALID_HANDLE_VALUE
+        call WriteWindowsMsg
+        jmp quit
+    .endif
     mov hFile,eax
     mov ecx, headerChunkLen
     mov edx, OFFSET headerChunk
     call WriteToFile
-    call Randomize
+    .if EAX == 0
+        call WriteWindowsMsg
+        jmp closeAndQuit
+    .endif
 
+    ; prompt for tempo and display the result to the user
     mov edx, OFFSET tempoPrompt
     call WriteString
     call crLf
@@ -129,6 +133,7 @@ main PROC
     call WriteDec
     call crLf
 
+    ; store the tempo
     mov ebx, eax
     mov eax, 60000000
     mov edx, 0
@@ -139,12 +144,19 @@ main PROC
     shr eax, 8
     mov track0Chunk[0ch], al
 
+    ; write the meta chunk
     mov ecx, track0ChunkLen
     mov eax, hFile
     mov edx, OFFSET track0Chunk
     call WriteToFile
+    .if EAX == 0
+        call WriteWindowsMsg
+        jmp closeAndQuit
+    .endif
 
+    ; prepare counter for looping
     mov ecx, 0
+
 notes: 
     cmp ecx, maxMeasures
     je write
@@ -162,50 +174,54 @@ notes:
     mov ebx, 3
     mul bx
     mov currChord, eax
+    mov esi, currChord
+    add esi, OFFSET chordVals
+    add edi, OFFSET track1Chunk
+    mov bh, 0
 
     ; bottom note on
     mov dl, currPitch
     mov bl, 90h
-    call noteEventTrack1
+    call noteEvent
 
     ; second note on
-    add dl, chordVals[eax]
-    call noteEventTrack1
+    add dl, [esi]
+    call noteEvent
 
     ; third note on
     mov dl, currPitch
-    add dl, chordVals[eax+1]
-    call noteEventTrack1
+    add dl, [esi+1]
+    call noteEvent
 
     ; top note on
     mov dl, currPitch
-    add dl, chordVals[eax+2]
-    call noteEventTrack1
+    add dl, [esi+2]
+    call noteEvent
 
     ; bottom note off
     mov dl, currPitch
-    mov track1Chunk[edi], 83h
-    mov track1Chunk[1+edi], 00h
-    mov track1Chunk[2+edi], 80h
-    mov track1Chunk[3+edi], dl
-    mov track1Chunk[4+edi], 40h
+    mov [edi], BYTE PTR 83h
+    mov [1+edi], BYTE PTR 00h
+    mov [2+edi], BYTE PTR 80h
+    mov [3+edi], dl
+    mov [4+edi], BYTE PTR 40h
     add edi, 5
 
     ; second note off
     mov dl, currPitch
-    add dl, chordVals[eax]
+    add dl, [esi]
     mov bl, 80h
-    CALL noteEventTrack1
+    CALL noteEvent
 
     ; third note off
     mov dl, currPitch
-    add dl, chordVals[eax+1]
-    CALL noteEventTrack1
+    add dl, [esi+1]
+    CALL noteEvent
 
     ; top note off
     mov dl, currPitch
-    add dl, chordVals[eax+2]
-    CALL noteEventTrack1
+    add dl, [esi+2]
+    CALL noteEvent
 
     mov eax, 3
     call RandomRange
@@ -213,272 +229,280 @@ notes:
     jb guitarPattern0
     je guitarPattern1
     ja guitarPattern2
+
 guitarPattern0:
+    ; prepare edi to point to the chunk
     mov eax, ecx
     mov ebx, 40h
     mul bx
     add eax, 0bh
     mov edi, eax
-    mov eax, currChord
+    mov esi, currChord
+    add esi, OFFSET chordVals
+    add edi, OFFSET track2Chunk
 
     ; bottom guitar note on
     mov dl, currPitch
     sub dl, 12
     mov bl, 91h
     mov bh, 0
-    call noteEventTrack2
+    call noteEvent
 
     ; top guitar note on
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax+2]
+    add dl, [esi+2]
     mov bl, 91h
     mov bh, 30h
-    call noteEventTrack2
+    call noteEvent
 
     ; bottom guitar note off
     mov dl, currPitch
     sub dl, 12
     mov bl, 81h
     mov bh, 30h
-    call noteEventTrack2
+    call noteEvent
 
     ; second guitar note on
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax]
+    add dl, [esi]
     mov bl, 91h
     mov bh, 0
-    call noteEventTrack2
+    call noteEvent
 
     ; top guitar note off
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax+2]
+    add dl, [esi+2]
     mov bl, 81h
     mov bh, 30h
-    call noteEventTrack2
+    call noteEvent
     
     ; third guitar note on
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax+1]
+    add dl, [esi+1]
     mov bl, 91h
     mov bh, 0
-    call noteEventTrack2
+    call noteEvent
 
     ; second guitar note off
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax+1]
+    add dl, [esi+1]
     mov bl, 81h
     mov bh, 30h
-    call noteEventTrack2
+    call noteEvent
 
     ; bottom guitar note on
     mov dl, currPitch
     sub dl, 12
     mov bl, 91h
     mov bh, 0
-    call noteEventTrack2
+    call noteEvent
 
     ; third guitar note off
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax+1]
+    add dl, [esi+1]
     mov bl, 81h
     mov bh, 30h
-    call noteEventTrack2
+    call noteEvent
 
     ; top guitar note on
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax+2]
+    add dl, [esi+2]
     mov bl, 91h
     mov bh, 0
-    call noteEventTrack2
+    call noteEvent
 
     ; bottom guitar note off
     mov dl, currPitch
     sub dl, 12
     mov bl, 81h
     mov bh, 30h
-    call noteEventTrack2
+    call noteEvent
 
     ; second guitar note on
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax]
+    add dl, [esi]
     mov bl, 91h
     mov bh, 0
-    call noteEventTrack2
+    call noteEvent
 
     ; top guitar note off
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax+2]
+    add dl, [esi+2]
     mov bl, 81h
     mov bh, 30h
-    call noteEventTrack2
+    call noteEvent
 
     ; third guitar note on
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax+1]
+    add dl, [esi+1]
     mov bl, 91h
     mov bh, 0
-    call noteEventTrack2
+    call noteEvent
 
     ; second guitar note off
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax]
+    add dl, [esi]
     mov bl, 81h
     mov bh, 30h
-    call noteEventTrack2
+    call noteEvent
 
     ; third guitar note off
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax+1]
-    mov track2Chunk[edi], 0
-    mov track2Chunk[1+edi], 81h
-    mov track2Chunk[2+edi], dl
-    mov track2Chunk[3+edi], 40h
+    add dl, [esi+1]
+    mov [edi], BYTE PTR 0
+    mov [1+edi], BYTE PTR 81h
+    mov [2+edi], dl
+    mov [3+edi], BYTE PTR 40h
+
     inc ecx
     jmp notes
+
 guitarPattern1:
     mov eax, ecx
     mov ebx, 40h
     mul bx
     add eax, 0bh
     mov edi, eax
-    mov eax, currChord
+    mov esi, currChord
+    add esi, OFFSET chordVals
+    add edi, OFFSET track2Chunk
     
     ; bottom guitar note on
     mov dl, currPitch
     sub dl, 12
     mov bl, 91h
     mov bh, 0
-    call noteEventTrack2
+    call noteEvent
 
     ; third guitar note on
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax+1]
+    add dl, [esi+1]
     mov bl, 91h
     mov bh, 30h
-    call noteEventTrack2
+    call noteEvent
 
     ; bottom guitar note off
     mov dl, currPitch
     sub dl, 12
     mov bl, 81h
     mov bh, 30h
-    call noteEventTrack2
+    call noteEvent
 
     ; second guitar note on
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax]
+    add dl, [esi]
     mov bl, 91h
     mov bh, 0
-    call noteEventTrack2
+    call noteEvent
 
     ; third guitar note off
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax+1]
+    add dl, [esi+1]
     mov bl, 81h
     mov bh, 30h
-    call noteEventTrack2
+    call noteEvent
     
     ; top guitar note on
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax+2]
+    add dl, [esi+2]
     mov bl, 91h
     mov bh, 0
-    call noteEventTrack2
+    call noteEvent
 
     ; second guitar note off
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax]
+    add dl, [esi]
     mov bl, 81h
     mov bh, 30h
-    call noteEventTrack2
+    call noteEvent
 
     ; bottom guitar note on
     mov dl, currPitch
     sub dl, 12
     mov bl, 91h
     mov bh, 0
-    call noteEventTrack2
+    call noteEvent
 
     ; top guitar note off
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax+2]
+    add dl, [esi+2]
     mov bl, 81h
     mov bh, 30h
-    call noteEventTrack2
+    call noteEvent
 
     ; third guitar note on
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax+1]
+    add dl, [esi+1]
     mov bl, 91h
     mov bh, 0
-    call noteEventTrack2
+    call noteEvent
 
     ; bottom guitar note off
     mov dl, currPitch
     sub dl, 12
     mov bl, 81h
     mov bh, 30h
-    call noteEventTrack2
+    call noteEvent
 
     ; second guitar note on
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax]
+    add dl, [esi]
     mov bl, 91h
     mov bh, 0
-    call noteEventTrack2
+    call noteEvent
 
     ; third guitar note off
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax+1]
+    add dl, [esi+1]
     mov bl, 81h
     mov bh, 30h
-    call noteEventTrack2
+    call noteEvent
 
     ; top guitar note on
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax+2]
+    add dl, [esi+2]
     mov bl, 91h
     mov bh, 0
-    call noteEventTrack2
+    call noteEvent
 
     ; second guitar note off
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax]
+    add dl, [esi]
     mov bl, 81h
     mov bh, 30h
-    call noteEventTrack2
+    call noteEvent
 
     ; top guitar note off
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax+2]
-    mov track2Chunk[edi], 0
-    mov track2Chunk[1+edi], 81h
-    mov track2Chunk[2+edi], dl
-    mov track2Chunk[3+edi], 40h
+    add dl, [esi+2]
+    mov [edi], BYTE PTR 0
+    mov [1+edi], BYTE PTR 81h
+    mov [2+edi], dl
+    mov [3+edi], BYTE PTR 40h
     inc ecx
     jmp notes
 guitarPattern2:
@@ -487,149 +511,174 @@ guitarPattern2:
     mul bx
     add eax, 0bh
     mov edi, eax
-    mov eax, currChord
+    mov esi, currChord
+    add esi, OFFSET chordVals
+    add edi, OFFSET track2Chunk
     
     ; bottom guitar note on
     mov dl, currPitch
     sub dl, 12
     mov bl, 91h
     mov bh, 0
-    call noteEventTrack2
+    call noteEvent
 
     ; top guitar note on
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax+2]
+    add dl, [esi+2]
     mov bl, 91h
     mov bh, 0
-    call noteEventTrack2
+    call noteEvent
 
     ; bottom guitar note off
     mov dl, currPitch
     sub dl, 12
     mov bl, 81h
     mov bh, 60h
-    call noteEventTrack2
+    call noteEvent
 
     ; second guitar note on
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax]
+    add dl, [esi]
     mov bl, 91h
     mov bh, 0
-    call noteEventTrack2
+    call noteEvent
 
     ; top guitar note off
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax+2]
+    add dl, [esi+2]
     mov bl, 81h
     mov bh, 30h
-    call noteEventTrack2
+    call noteEvent
     
     ; third guitar note on
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax+1]
+    add dl, [esi+1]
     mov bl, 91h
     mov bh, 0
-    call noteEventTrack2
+    call noteEvent
 
     ; second guitar note off
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax]
+    add dl, [esi]
     mov bl, 81h
     mov bh, 30h
-    call noteEventTrack2
+    call noteEvent
 
     ; bottom guitar note on
     mov dl, currPitch
     sub dl, 12
     mov bl, 91h
     mov bh, 0
-    call noteEventTrack2
+    call noteEvent
 
     ; third guitar note off
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax+1]
+    add dl, [esi+1]
     mov bl, 81h
     mov bh, 30h
-    call noteEventTrack2
+    call noteEvent
 
     ; top guitar note on
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax+2]
+    add dl, [esi+2]
     mov bl, 91h
     mov bh, 0
-    call noteEventTrack2
+    call noteEvent
 
     ; bottom guitar note off
     mov dl, currPitch
     sub dl, 12
     mov bl, 81h
     mov bh, 30h
-    call noteEventTrack2
+    call noteEvent
 
     ; second guitar note on
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax]
+    add dl, [esi]
     mov bl, 91h
     mov bh, 0
-    call noteEventTrack2
+    call noteEvent
 
     ; top guitar note off
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax+2]
+    add dl, [esi+2]
     mov bl, 81h
     mov bh, 30h
-    call noteEventTrack2
+    call noteEvent
 
     ; third guitar note on
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax+1]
+    add dl, [esi+1]
     mov bl, 91h
     mov bh, 0
-    call noteEventTrack2
+    call noteEvent
 
     ; second guitar note off
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax]
+    add dl, [esi]
     mov bl, 81h
     mov bh, 30h
-    call noteEventTrack2
+    call noteEvent
 
     ; third guitar note off
     mov dl, currPitch
     sub dl, 12
-    add dl, chordVals[eax+1]
-    mov track2Chunk[edi], 0
-    mov track2Chunk[1+edi], 81h
-    mov track2Chunk[2+edi], dl
-    mov track2Chunk[3+edi], 40h
+    add dl, [esi+1]
+    mov [edi], BYTE PTR 0
+    mov [1+edi], BYTE PTR 81h
+    mov [2+edi], dl
+    mov [3+edi], BYTE PTR 40h
+
     inc ecx
     jmp notes
+
 write:
+    ; write the first track
     mov ecx, track1ChunkLen
     mov eax, hFile
     mov edx, OFFSET track1Chunk
     call WriteToFile
+    .if EAX == 0
+        call WriteWindowsMsg
+        jmp closeAndQuit
+    .endif
+
+    ; write the second track
     mov ecx, track2ChunkLen
     mov eax, hFile
     mov edx, OFFSET track2Chunk
     call WriteToFile
+    .if EAX == 0
+        call WriteWindowsMsg
+        jmp closeAndQuit
+    .endif
+
+    ; write the third track
     mov ecx, track3ChunkLen
     mov eax, hFile
     mov edx, OFFSET track3Chunk
     call WriteToFile
+    .if EAX == 0
+        call WriteWindowsMsg
+        jmp closeAndQuit
+    .endif
+
+closeAndQuit:
     mov eax, hFile
     call CloseFile
+
+quit:
 	INVOKE ExitProcess, 0			; end the program
 main ENDP
 END main
