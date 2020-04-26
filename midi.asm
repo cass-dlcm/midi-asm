@@ -9,9 +9,11 @@ minTempoPrompt BYTE "Enter the minimum tempo: ", 0
 maxTempoPrompt BYTE "Enter the maximum tempo: ", 0
 outTempoPrompt BYTE "The generated tempo is: ", 0
 modeAskMsg BYTE "Choose a mode; Sequencer (S) or Random (R): ", 0
-sequenceCountAskMsg BYTE "Enter the number of unique sequences: ", 0
-sequenceMeasuresCountAskMsgP1 BYTE "Enter the number of measures in sequence " , 0
+sequenceCountAskMsg BYTE "Enter the number of unique segments (in hexadecimal): ", 0
+sequenceMeasuresCountAskMsgP1 BYTE "Enter (in hexadecimal) the number of measures in segment " , 0
 sequenceMeasuresCountAskMsgP2 BYTE ": ", 0
+howManyInSequenceAskMsg BYTE "Enter (in hexadecimal) the number of segments in your sequence: ", 0
+segmentAskMsg BYTE "Enter (in hexadecimal) the number of the segment that comes next: ", 0
 measurePrompt BYTE "Please enter a measure range. To set a specific number of measures, type it in for both the min and the max.", 0
 minMeasurePrompt BYTE "Enter the minimum number of measures: ", 0
 maxMeasurePrompt BYTE "Enter the maximum number of measures: ", 0
@@ -74,9 +76,14 @@ measureCount dword ?                            ; variable of measures to genera
 
 mode db ?
 
-sequenceCount db 0
+sequenceLen dword ?
+segmentCount dword ?
+currentMeasure dword 0
 measuresPerSequence dword ?
+segmentOffsets dword ?
+sequence dword ?
 measuresInSequence dword ?
+
 .data?
 hFile  HANDLE ?                                 ; handle to the file
 hHeap  HANDLE ?                                 ; handle to the heap
@@ -187,35 +194,93 @@ sequencer:
     mov mode, 1
     mov edx, OFFSET sequenceCountAskMsg
     call WriteString
-    call ReadInt
-    mov sequenceCount, al
+    call ReadHex
+    mov segmentcount, eax
 
-    ; allocate memory for track 1
-    invoke HeapAlloc, hHeap, HEAP_ZERO_MEMORY, sequenceCount
+    ; allocate memory for sequence count
+    invoke HeapAlloc, hHeap, HEAP_ZERO_MEMORY, segmentCount
     .if eax == NULL
         call WriteWindowsMsg
         jmp closeAndQuit
     .endif
     mov measuresPerSequence, eax
-    mov edi, measuresPerSequence
+    mov edi, measuresPerSequence    
+    invoke HeapAlloc, hHeap, HEAP_ZERO_MEMORY, segmentCount
+    .if eax == NULL
+        call WriteWindowsMsg
+        jmp closeAndQuit
+    .endif
+    mov segmentOffsets, eax
+    xor ebx, ebx
     xor ecx, ecx
     mov measureCount, 0
+    mov eax, 0
+    mov edi, segmentOffsets
 
 sequenceMeasureRead:
-    cmp cl, sequenceCount
-    je trackPrep
+    cmp ecx, segmentCount
+    je getSequenceLength
+    shl eax, 1
+    add ebx, eax
+    mov [edi+ecx], bl
+    mov al, [edi+ecx]
+    call WriteHex
     mov edx, OFFSET sequenceMeasuresCountAskMsgP1
     call WriteString
-    mov eax, ecx
-    call WriteHex
     mov edx, OFFSET sequenceMeasuresCountAskMsgP2
     call WriteString
-    call ReadInt
-    mov [edi+ecx], al
-    add measureCount, eax
-    inc cl
+    call ReadHex
+    mov BYTE PTR measuresPerSequence[ecx], al
+    inc ecx
     jmp sequenceMeasureRead
 
+getSequenceLength:
+    mov edx, OFFSET howManyInSequenceAskMsg
+    call WriteString
+    call ReadHex
+    mov sequenceLen, eax
+    
+    ; allocate memory for sequence count
+    invoke HeapAlloc, hHeap, HEAP_ZERO_MEMORY, sequenceLen
+    .if eax == NULL
+        call WriteWindowsMsg
+        jmp closeAndQuit
+    .endif
+    mov sequence, eax
+
+    mov ecx, 0
+
+getSequence: 
+    cmp ecx, sequenceLen
+    je setMeasures
+    mov edx, OFFSET segmentAskMsg
+    call WriteString
+    call ReadHex
+    call WriteHex
+    call CrLf
+    call CrLf
+    mov BYTE PTR sequence[ecx], al
+    inc ecx
+    jmp getSequence
+
+setMeasures:
+    mov ecx, 0
+    mov eax, 0
+
+setMeasuresLoop:
+    cmp ecx, sequenceLen
+    je trackPrep
+    mov bl, BYTE PTR sequence[ecx]
+    mov eax, ebx
+    mov edx, 0
+    mov dl, BYTE PTR measuresPerSequence[ebx]
+    mov eax, edx
+    mov eax, measureCount
+    add eax, edx
+    mov measureCount, eax
+    inc ecx
+    jmp setMeasuresLoop
+    
 random:
     mov mode, 0
 
@@ -238,10 +303,10 @@ random:
     call WriteString
     call WriteDec
     call crLf
+    mov measureCount, eax
     jmp trackPrep
 
 trackPrep:
-    mov measureCount, eax
     mov ebx, 33
     xor edx, edx
     mul ebx
@@ -327,22 +392,20 @@ trackPrep:
 
     ; prepare counter for looping
     xor ecx, ecx
+    xor ecx, ecx
+    cmp mode, 0
+    je genRandom
+    jmp notesSequenceCreate
 
-notes: 
+genRandom: 
     cmp ecx, measureCount
-    je write
+    je notesPrep
     mov eax, 12
     call RandomRange
     add eax, cPitch
     mov ebx, ecx
     shl ebx, 1
     mov BYTE PTR measuresInSequence[ebx], al
-    mov eax, ecx
-    xor edx, edx
-    mov ebx, 33
-    mul ebx
-    add eax, 11
-    mov edi, eax
     xor edx, edx
     mov eax, 15
     call RandomRange
@@ -352,6 +415,24 @@ notes:
     shl ebx, 1
     mov BYTE PTR measuresInSequence[ebx+1], al
     xor eax, eax
+    inc ecx
+    jmp genRandom
+
+notesPrep:
+    xor ecx, ecx
+
+notes:
+    cmp ecx, measureCount
+    je write
+    mov eax, ecx
+    mov edx, 0
+    mov ebx, 33
+    mul ebx
+    add eax, 11
+    mov edi, eax
+    mov eax, 0
+    mov ebx, ecx
+    shl ebx, 1
     mov al, BYTE PTR measuresInSequence[ebx+1]
     mov esi, OFFSET chordVals
     add esi, eax
@@ -363,6 +444,7 @@ notes:
     mov dl, BYTE PTR measuresInSequence[ebx]
     xor bh, bh
     mov bl, 90h
+    mov al, dl
     call noteEvent
 
     ; second note on
@@ -392,7 +474,6 @@ notes:
     mov ebx, ecx
     shl ebx, 1
     mov dl, BYTE PTR measuresInSequence[ebx]
-    xor bh, bh
     mov [edi], BYTE PTR 83h
     mov [1+edi], BYTE PTR 00h
     mov [2+edi], BYTE PTR 80h
@@ -402,6 +483,7 @@ notes:
 
     ; second note off
     add dl, [esi]
+    xor bh, bh
     mov bl, 80h
     CALL noteEvent
 
@@ -911,6 +993,139 @@ guitarPattern2:
 
     inc ecx
     jmp notes
+
+notesSequenceCreate:
+    xor ecx, ecx
+    xor edx, edx
+outer:
+    cmp ecx, segmentCount
+    je notesSequencePrep
+    mov ebx, ecx
+    xor ecx, ecx
+
+inner:
+    cmp cl, BYTE PTR measuresPerSequence[ebx]
+    je loopAfter
+    push ebx
+    mov eax, 12
+    call RandomRange
+    add eax, cPitch
+    mov ebx, ecx
+    shl ebx, 1
+    mov BYTE PTR measuresInSequence[edx+ebx], al
+    call WriteHex
+    call CrLf
+    push edx
+    xor edx, edx
+    mov eax, 15
+    call RandomRange
+    mov ebx, 3
+    mul ebx
+    pop edx
+    mov ebx, ecx
+    shl ebx, 1
+    mov BYTE PTR measuresInSequence[edx+ebx+1], al
+    pop ebx
+    inc cl
+    jmp inner
+
+loopAfter:
+    mov ecx, ebx
+    xor eax, eax
+    mov al, BYTE PTR measuresPerSequence[ecx]
+    add edx, eax
+    inc ecx
+    jmp outer
+
+notesSequencePrep:
+    xor ecx, ecx
+    mov edi, track1Chunk
+
+notesSequence:
+    cmp ecx, sequenceLen
+    je write
+    push ecx
+    mov al, BYTE PTR sequence[ecx]
+    xor ecx, ecx
+    innerNotes:
+        cmp cl, BYTE PTR measuresPerSequence[eax]
+        je loopAfterNotes
+        xor ebx, ebx
+        add bl, BYTE PTR segmentOffsets[eax]
+        mov esi, ebx
+        push eax
+        mov eax, ecx
+        xor edx, edx
+        mov ebx, 33
+        mul ebx
+        add eax, 11
+        mov edi, eax
+        add edi, track1Chunk
+        mov eax, ecx
+        shl eax, 1
+        ; bottom note on
+        mov dl, BYTE PTR measuresInSequence[esi+eax]
+        mov bl, 90h
+        xor bh, bh
+        call noteEvent
+        ; second note on
+        mov dl, BYTE PTR measuresInSequence[esi+eax+1]
+        mov dl, chordVals[edx]
+        add dl, BYTE PTR measuresInSequence[esi+eax]
+        mov bl, 90h
+        call noteEvent
+        ; third note on
+        mov dl, BYTE PTR measuresInSequence[esi+eax+1]
+        mov dl, chordVals[edx+1]
+        add dl, BYTE PTR measuresInSequence[esi+eax]
+        mov bl, 90h
+        add dl, chordVals[esi+1]
+        call noteEvent
+
+        ; top note on
+        mov dl, BYTE PTR measuresInSequence[esi+eax+1]
+        mov dl, chordVals[edx+2]
+        add dl, BYTE PTR measuresInSequence[esi+eax]
+        mov bl, 90h
+        add dl, chordVals[esi+2]
+        call noteEvent
+
+        ; bottom note off
+        mov dl, BYTE PTR measuresInSequence[esi]
+        mov [edi], BYTE PTR 83h
+        mov [1+edi], BYTE PTR 00h
+        mov [2+edi], BYTE PTR 80h
+        mov [3+edi], dl
+        mov [4+edi], BYTE PTR 40h
+        add edi, 5
+
+        ; second note off
+        add dl, chordVals[esi]
+        xor bh, bh
+        mov bl, 80h
+        CALL noteEvent
+
+        ; third note off
+        mov dl, BYTE PTR measuresInSequence[esi+1]
+        mov dl, chordVals[edx]
+        add dl, BYTE PTR measuresInSequence
+        mov bl, 80h
+        CALL noteEvent
+
+        ; top note off
+        mov dl, BYTE PTR measuresInSequence[esi]
+        add dl, chordVals[esi+2]
+        mov bl, 80h
+        CALL noteEvent
+        pop eax
+        inc ecx
+        inc currentMeasure
+        jmp innerNotes
+loopAfterNotes:
+    pop ecx
+    inc ecx
+    jmp notesSequence
+        
 
 write:
     ; write the first track
