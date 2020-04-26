@@ -18,6 +18,11 @@ measurePrompt BYTE "Please enter a measure range. To set a specific number of me
 minMeasurePrompt BYTE "Enter the minimum number of measures: ", 0
 maxMeasurePrompt BYTE "Enter the maximum number of measures: ", 0
 outMeasurePrompt BYTE "The generated number of measures is: ", 0
+errorMsg BYTE "An error has occured. Terminating.", 0
+segmentNumOobErr BYTE "The segment number (in ESI) is out of bounds!", 0
+measureNumOobErr BYTE "The message number (in BL) is out of bounds!", 0
+timeOorErr BYTE "The time (in BH) is too high!", 0
+pitchOorErr BYTE "The pitch (in DL) is too high!", 0
 
 chordNames BYTE "M", 0,
                 "m", 0,
@@ -79,23 +84,117 @@ mode db ?
 sequenceLen dword ?
 segmentCount dword ?
 currentMeasure dword 0
-measuresPerSequence dword ?
+measuresPerSegment dword ?
 segmentOffsets dword ?
 sequence dword ?
 measuresInSequence dword ?
+measuresInSegments dword ?
 
 .data?
 hFile  HANDLE ?                                 ; handle to the file
 hHeap  HANDLE ?                                 ; handle to the heap
 .code
-noteEvent PROC
+
+Error PROC
+    call WriteString
+    invoke ExitProcess, 0
+Error ENDP
+
+;-------------------------------------------------------------------------------
+noteEvent PROC USES ebx edx,
+    time:BYTE,
+    event:BYTE,
+    pitch:BYTE
+; stores a note event in the dword specified by EDI
+; Returns: nothing
+;-------------------------------------------------------------------------------
+    mov bh, time
+    cmp bh, 80h
+    jb continue0
+    call DumpRegs
+    mov edx, OFFSET timeOorErr
+    call Error
+continue0:
+    mov dl, pitch
+    cmp dl, 80h
+    jb continue1
+    call DumpRegs
+    mov edx, OFFSET pitchOorErr
+    call Error
+continue1:
+    mov dh, event
     mov [edi], bh                               ; delta time
-    mov [edi+1], bl                             ; note event, channel 0
+    mov [edi+1], dh                             ; note event, channel 0
     mov [edi+2], dl                             ; pitch in dl register
     mov [edi+3], BYTE PTR 40h                   ; velocity of 64 (medium)
     add edi, 4
     ret
 noteEvent ENDP
+
+;-------------------------------------------------------------------------------
+readMeasuresInSegments PROC USES ebx edx esi,
+    segmentNum:BYTE,                            ; which segment to use
+    measureNum:BYTE                             ; which measure in the segment
+; Returns
+;   AL with the base pitch
+;   AH with the chord type
+;-------------------------------------------------------------------------------
+    movzx edx, measureNum
+    shl edx, 1
+    movzx esi, segmentNum
+    cmp esi, segmentCount
+    jb continue0
+    call DumpRegs
+    mov edx, OFFSET segmentNumOobErr
+    call Error
+continue0:
+    movzx ebx, BYTE PTR measuresPerSegment[esi]
+    cmp measureNum, bl
+    jb continue1
+    call DumpRegs
+    mov edx, OFFSET measureNumOobErr
+    call Error
+continue1:
+    add bl, BYTE PTR segmentOffsets[esi]
+    add ebx, edx
+    xor eax, eax
+    mov al, BYTE PTR measuresInSegments[ebx]
+    mov ah, BYTE PTR measuresInSegments[ebx+1]
+    ret
+readMeasuresInSegments ENDP
+
+;-------------------------------------------------------------------------------
+writeMeasuresInSegments PROC USES ebx edx esi edi,
+    segmentNum:BYTE,                            ; which segment to use
+    measureNum:BYTE,                            ; which measure in the segment
+    partToWriteTo:BYTE,                         ; whether to write as base pitch or chord type
+    dataToWrite:BYTE                            ; what the data is to write
+; Returns: nothing
+;-------------------------------------------------------------------------------
+    movzx esi, segmentNum
+    cmp esi, segmentCount
+    jb continue0
+    call DumpRegs
+    mov edx, OFFSET segmentNumOobErr
+    call Error
+continue0:
+    movzx ebx, BYTE PTR measuresPerSegment[esi]
+    cmp measureNum, bl
+    jb continue1
+    call DumpRegs
+    mov edx, OFFSET measureNumOobErr
+    call Error
+continue1:
+    add bl, BYTE PTR segmentOffsets[esi]
+    movzx edx, measureNum
+    shl edx, 1
+    add ebx, edx
+    add bl, partToWriteTo
+    mov edi, ebx
+    mov bl, dataToWrite
+    mov BYTE PTR measuresInSegments[edi], bl
+    ret
+writeMeasuresInSegments ENDP
 
 
 main PROC
@@ -172,23 +271,22 @@ main PROC
 
 promptMode:
     ; prompt for mode
-    ;mov edx, OFFSET modeAskMsg
-    ;call WriteString
-    ;call ReadChar
-    ;call CrLF
-    ;cmp al, "R"
-    ;je random
-    ;cmp al, "r"
-    ;je random
-    ;cmp al, "S"
-    ;je sequencer
-    ;cmp al, "s"
-    ;je sequencer
-    ;mov edx, OFFSET invalidInputMsg
-    ;call WriteString
-    ;call CrLf
-    ;jmp promptMode
-    jmp random
+    mov edx, OFFSET modeAskMsg
+    call WriteString
+    call ReadChar
+    call CrLF
+    cmp al, "R"
+    je random
+    cmp al, "r"
+    je random
+    cmp al, "S"
+    je sequencer
+    cmp al, "s"
+    je sequencer
+    mov edx, OFFSET invalidInputMsg
+    call WriteString
+    call CrLf
+    jmp promptMode
 
 sequencer:
     mov mode, 1
@@ -203,8 +301,8 @@ sequencer:
         call WriteWindowsMsg
         jmp closeAndQuit
     .endif
-    mov measuresPerSequence, eax
-    mov edi, measuresPerSequence
+    mov measuresPerSegment, eax
+    mov edi, measuresPerSegment
     invoke HeapAlloc, hHeap, HEAP_ZERO_MEMORY, segmentCount
     .if eax == NULL
         call WriteWindowsMsg
@@ -223,14 +321,14 @@ sequenceMeasureRead:
     shl eax, 1
     add ebx, eax
     mov [edi+ecx], bl
-    mov al, [edi+ecx]
-    call WriteHex
     mov edx, OFFSET sequenceMeasuresCountAskMsgP1
     call WriteString
+    mov eax, ecx
+    call WriteHex
     mov edx, OFFSET sequenceMeasuresCountAskMsgP2
     call WriteString
     call ReadHex
-    mov BYTE PTR measuresPerSequence[ecx], al
+    mov BYTE PTR measuresPerSegment[ecx], al
     inc ecx
     jmp sequenceMeasureRead
 
@@ -256,9 +354,6 @@ getSequence:
     mov edx, OFFSET segmentAskMsg
     call WriteString
     call ReadHex
-    call WriteHex
-    call CrLf
-    call CrLf
     mov BYTE PTR sequence[ecx], al
     inc ecx
     jmp getSequence
@@ -271,10 +366,7 @@ setMeasuresLoop:
     cmp ecx, sequenceLen
     je trackPrep
     mov bl, BYTE PTR sequence[ecx]
-    mov eax, ebx
-    mov edx, 0
-    mov dl, BYTE PTR measuresPerSequence[ebx]
-    mov eax, edx
+    movzx edx, BYTE PTR measuresPerSegment[ebx]
     mov eax, measureCount
     add eax, edx
     mov measureCount, eax
@@ -391,8 +483,6 @@ trackPrep:
     mov [edi-1], BYTE PTR 0
 
     ; prepare counter for looping
-<<<<<<< HEAD
-    xor ecx, ecx
     xor ecx, ecx
     cmp mode, 0
     je genRandom
@@ -443,33 +533,25 @@ notes:
     mov ebx, ecx
     shl ebx, 1
     mov dl, BYTE PTR measuresInSequence[ebx]
-    xor bh, bh
-    mov bl, 90h
-    mov al, dl
-    call noteEvent
+    INVOKE noteEvent, 0, 90h, BYTE PTR measuresInSequence[ebx]
 
     ; second note on
     add dl, [esi]
-    mov bl, 90h
-    call noteEvent
+    INVOKE noteEvent, 0, 90h, dl
 
     ; third note on
     mov ebx, ecx
     shl ebx, 1
     mov dl, BYTE PTR measuresInSequence[ebx]
-    xor bh, bh
-    mov bl, 90h
     add dl, [esi+1]
-    call noteEvent
+    INVOKE noteEvent, 0, 90h, dl
 
     ; top note on
     mov ebx, ecx
     shl ebx, 1
     mov dl, BYTE PTR measuresInSequence[ebx]
-    xor bh, bh
-    mov bl, 90h
     add dl, [esi+2]
-    call noteEvent
+    INVOKE noteEvent, 0, 90h, dl
 
     ; bottom note off
     mov ebx, ecx
@@ -484,27 +566,21 @@ notes:
 
     ; second note off
     add dl, [esi]
-    xor bh, bh
-    mov bl, 80h
-    CALL noteEvent
+    INVOKE noteEvent, 0, 80h, dl
 
     ; third note off
     mov ebx, ecx
     shl ebx, 1
     mov dl, BYTE PTR measuresInSequence[ebx]
-    xor bh, bh
     add dl, [esi+1]
-    mov bl, 80h
-    CALL noteEvent
+    INVOKE noteEvent, 0, 80h, dl
 
     ; top note off
     mov ebx, ecx
     shl ebx, 1
     mov dl, BYTE PTR measuresInSequence[ebx]
-    xor bh, bh
     add dl, [esi+2]
-    mov bl, 80h
-    CALL noteEvent
+    INVOKE noteEvent, 0, 80h, dl
 
     mov eax, 3
     call RandomRange
@@ -534,30 +610,24 @@ guitarPattern0:
     shl ebx, 1
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
-    mov bl, 91h
-    xor bh, bh
-    call noteEvent
+    INVOKE noteEvent, 0, 91h, dl
 
     ; top guitar note on
     add dl, [esi+2]
-    mov bl, 91h
-    mov bh, 30h
-    call noteEvent
+    INVOKE noteEvent, 30h, 91h, dl
 
     ; bottom guitar note off
     mov ebx, ecx
     shl ebx, 1
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
-    mov bl, 81h
-    mov bh, 30h
-    call noteEvent
+    INVOKE noteEvent, 30h, 81h, dl
+
 
     ; second guitar note on
     add dl, [esi]
-    mov bl, 91h
-    xor bh, bh
-    call noteEvent
+    INVOKE noteEvent, 0, 91h, dl
+
 
     ; top guitar note off
     mov ebx, ecx
@@ -565,9 +635,7 @@ guitarPattern0:
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
     add dl, [esi+2]
-    mov bl, 81h
-    mov bh, 30h
-    call noteEvent
+    INVOKE noteEvent, 30h, 81h, dl
     
     ; third guitar note on
     mov ebx, ecx
@@ -575,9 +643,7 @@ guitarPattern0:
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
     add dl, [esi+1]
-    mov bl, 91h
-    xor bh, bh
-    call noteEvent
+    INVOKE noteEvent, 0, 91h, dl
 
     ; second guitar note off
     mov ebx, ecx
@@ -585,24 +651,19 @@ guitarPattern0:
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
     add dl, [esi+1]
-    mov bl, 81h
-    mov bh, 30h
-    call noteEvent
+    INVOKE noteEvent, 30h, 81h, dl
 
     ; bottom guitar note on
     mov ebx, ecx
     shl ebx, 1
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
-    mov bl, 91h
-    xor bh, bh
-    call noteEvent
+    INVOKE noteEvent, 0, 91h, dl
 
     ; third guitar note off
     add dl, [esi+1]
-    mov bl, 81h
-    mov bh, 30h
-    call noteEvent
+    INVOKE noteEvent, 30h, 81h, dl
+
 
     ; top guitar note on
     mov ebx, ecx
@@ -610,24 +671,20 @@ guitarPattern0:
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
     add dl, [esi+2]
-    mov bl, 91h
-    xor bh, bh
-    call noteEvent
+    INVOKE noteEvent, 0, 91h, dl
+
 
     ; bottom guitar note off
     mov ebx, ecx
     shl ebx, 1
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
-    mov bl, 81h
-    mov bh, 30h
-    call noteEvent
+    INVOKE noteEvent, 30h, 81h, dl
+
 
     ; second guitar note on
     add dl, [esi]
-    mov bl, 91h
-    xor bh, bh
-    call noteEvent
+    INVOKE noteEvent, 0, 91h, dl
 
     ; top guitar note off
     mov ebx, ecx
@@ -635,9 +692,7 @@ guitarPattern0:
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
     add dl, [esi+2]
-    mov bl, 81h
-    mov bh, 30h
-    call noteEvent
+    INVOKE noteEvent, 30h, 81h, dl
 
     ; third guitar note on
     mov ebx, ecx
@@ -645,9 +700,8 @@ guitarPattern0:
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
     add dl, [esi+1]
-    mov bl, 91h
-    xor bh, bh
-    call noteEvent
+    INVOKE noteEvent, 0, 91h, dl
+
 
     ; second guitar note off
     mov ebx, ecx
@@ -655,9 +709,7 @@ guitarPattern0:
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
     add dl, [esi]
-    mov bl, 81h
-    mov bh, 30h
-    call noteEvent
+    INVOKE noteEvent, 30h, 81h, dl
 
     ; third guitar note off
     mov ebx, ecx
@@ -665,10 +717,7 @@ guitarPattern0:
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
     add dl, [esi+1]
-    mov [edi], BYTE PTR 0
-    mov [1+edi], BYTE PTR 81h
-    mov [2+edi], dl
-    mov [3+edi], BYTE PTR 40h
+    INVOKE noteEvent, 0, 81h, dl
 
     inc ecx
     jmp notes
@@ -693,30 +742,22 @@ guitarPattern1:
     shl ebx, 1
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
-    mov bl, 91h
-    xor bh, bh
-    call noteEvent
+    INVOKE noteEvent, 0, 91h, dl
 
     ; third guitar note on
     add dl, [esi+1]
-    mov bl, 91h
-    mov bh, 30h
-    call noteEvent
+    INVOKE noteEvent, 30h, 91h, dl
 
     ; bottom guitar note off
     mov ebx, ecx
     shl ebx, 1
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
-    mov bl, 81h
-    mov bh, 30h
-    call noteEvent
+    INVOKE noteEvent, 30h, 81h, dl
 
     ; second guitar note on
     add dl, [esi]
-    mov bl, 91h
-    xor bh, bh
-    call noteEvent
+    INVOKE noteEvent, 0, 91h, dl
 
     ; third guitar note off
     mov ebx, ecx
@@ -724,9 +765,7 @@ guitarPattern1:
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
     add dl, [esi+1]
-    mov bl, 81h
-    mov bh, 30h
-    call noteEvent
+    INVOKE noteEvent, 30h, 81h, dl
     
     ; top guitar note on
     mov ebx, ecx
@@ -734,9 +773,7 @@ guitarPattern1:
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
     add dl, [esi+2]
-    mov bl, 91h
-    xor bh, bh
-    call noteEvent
+    INVOKE noteEvent, 0, 91h, dl
 
     ; second guitar note off
     mov ebx, ecx
@@ -744,24 +781,18 @@ guitarPattern1:
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
     add dl, [esi]
-    mov bl, 81h
-    mov bh, 30h
-    call noteEvent
+    INVOKE noteEvent, 30h, 81h, dl
 
     ; bottom guitar note on
     mov ebx, ecx
     shl ebx, 1
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
-    mov bl, 91h
-    xor bh, bh
-    call noteEvent
+    INVOKE noteEvent, 0, 91h, dl
 
     ; top guitar note off
     add dl, [esi+2]
-    mov bl, 81h
-    mov bh, 30h
-    call noteEvent
+    INVOKE noteEvent, 30h, 81h, dl
 
     ; third guitar note on
     mov ebx, ecx
@@ -769,24 +800,18 @@ guitarPattern1:
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
     add dl, [esi+1]
-    mov bl, 91h
-    xor bh, bh
-    call noteEvent
+    INVOKE noteEvent, 0, 91h, dl
 
     ; bottom guitar note off
     mov ebx, ecx
     shl ebx, 1
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
-    mov bl, 81h
-    mov bh, 30h
-    call noteEvent
+    INVOKE noteEvent, 30h, 81h, dl
 
     ; second guitar note on
     add dl, [esi]
-    mov bl, 91h
-    xor bh, bh
-    call noteEvent
+    INVOKE noteEvent, 0, 91h, dl
 
     ; third guitar note off
     mov ebx, ecx
@@ -794,9 +819,7 @@ guitarPattern1:
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
     add dl, [esi+1]
-    mov bl, 81h
-    mov bh, 30h
-    call noteEvent
+    INVOKE noteEvent, 30h, 81h, dl
 
     ; top guitar note on
     mov ebx, ecx
@@ -804,9 +827,7 @@ guitarPattern1:
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
     add dl, [esi+2]
-    mov bl, 91h
-    xor bh, bh
-    call noteEvent
+    INVOKE noteEvent, 0, 91h, dl
 
     ; second guitar note off
     mov ebx, ecx
@@ -814,9 +835,7 @@ guitarPattern1:
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
     add dl, [esi]
-    mov bl, 81h
-    mov bh, 30h
-    call noteEvent
+    INVOKE noteEvent, 30h, 81h, dl
 
     ; top guitar note off
     mov ebx, ecx
@@ -824,10 +843,7 @@ guitarPattern1:
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
     add dl, [esi+2]
-    mov [edi], BYTE PTR 0
-    mov [1+edi], BYTE PTR 81h
-    mov [2+edi], dl
-    mov [3+edi], BYTE PTR 40h
+    INVOKE noteEvent, 0, 81h, dl
     
     inc ecx
     jmp notes
@@ -852,24 +868,18 @@ guitarPattern2:
     shl ebx, 1
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
-    mov bl, 91h
-    xor bh, bh
-    call noteEvent
+    INVOKE noteEvent, 0, 91h, dl
 
     ; top guitar note on
     add dl, [esi+2]
-    mov bl, 91h
-    xor bh, bh
-    call noteEvent
+    INVOKE noteEvent, 0, 91h, dl
 
     ; bottom guitar note off
     mov ebx, ecx
     shl ebx, 1
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
-    mov bl, 81h
-    mov bh, 60h
-    call noteEvent
+    INVOKE noteEvent, 60h, 81h, dl
 
     ; second guitar note on
     mov ebx, ecx
@@ -877,9 +887,7 @@ guitarPattern2:
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
     add dl, [esi]
-    mov bl, 91h
-    xor bh, bh
-    call noteEvent
+    INVOKE noteEvent, 0, 91h, dl
 
     ; top guitar note off
     mov ebx, ecx
@@ -887,9 +895,7 @@ guitarPattern2:
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
     add dl, [esi+2]
-    mov bl, 81h
-    mov bh, 30h
-    call noteEvent
+    INVOKE noteEvent, 30h, 81h, dl
     
     ; third guitar note on
     mov ebx, ecx
@@ -897,9 +903,7 @@ guitarPattern2:
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
     add dl, [esi+1]
-    mov bl, 91h
-    xor bh, bh
-    call noteEvent
+    INVOKE noteEvent, 0, 91h, dl
 
     ; second guitar note off
     mov ebx, ecx
@@ -907,24 +911,18 @@ guitarPattern2:
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
     add dl, [esi]
-    mov bl, 81h
-    mov bh, 30h
-    call noteEvent
+    INVOKE noteEvent, 30h, 81h, dl
 
     ; bottom guitar note on
     mov ebx, ecx
     shl ebx, 1
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
-    mov bl, 91h
-    xor bh, bh
-    call noteEvent
+    INVOKE noteEvent, 0, 91h, dl
 
     ; third guitar note off
     add dl, [esi+1]
-    mov bl, 81h
-    mov bh, 30h
-    call noteEvent
+    INVOKE noteEvent, 30h, 81h, dl
 
     ; top guitar note on
     mov ebx, ecx
@@ -932,24 +930,18 @@ guitarPattern2:
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
     add dl, [esi+2]
-    mov bl, 91h
-    xor bh, bh
-    call noteEvent
+    INVOKE noteEvent, 0, 91h, dl
 
     ; bottom guitar note off
     mov ebx, ecx
     shl ebx, 1
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
-    mov bl, 81h
-    mov bh, 30h
-    call noteEvent
+    INVOKE noteEvent, 30h, 81h, dl
 
     ; second guitar note on
     add dl, [esi]
-    mov bl, 91h
-    xor bh, bh
-    call noteEvent
+    INVOKE noteEvent, 0, 91h, dl
 
     ; top guitar note off
     mov ebx, ecx
@@ -957,9 +949,7 @@ guitarPattern2:
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
     add dl, [esi+2]
-    mov bl, 81h
-    mov bh, 30h
-    call noteEvent
+    INVOKE noteEvent, 30h, 81h, dl
 
     ; third guitar note on
     mov ebx, ecx
@@ -967,9 +957,7 @@ guitarPattern2:
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
     add dl, [esi+1]
-    mov bl, 91h
-    xor bh, bh
-    call noteEvent
+    INVOKE noteEvent, 0, 91h, dl
 
     ; second guitar note off
     mov ebx, ecx
@@ -977,9 +965,7 @@ guitarPattern2:
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
     add dl, [esi]
-    mov bl, 81h
-    mov bh, 30h
-    call noteEvent
+    INVOKE noteEvent, 30h, 81h, dl
 
     ; third guitar note off
     mov ebx, ecx
@@ -987,10 +973,7 @@ guitarPattern2:
     mov dl, BYTE PTR measuresInSequence[ebx]
     sub dl, 12
     add dl, [esi+1]
-    mov [edi], BYTE PTR 0
-    mov [1+edi], BYTE PTR 81h
-    mov [2+edi], dl
-    mov [3+edi], BYTE PTR 40h
+   INVOKE noteEvent, 0, 81h, dl
 
     inc ecx
     jmp notes
@@ -1005,17 +988,13 @@ outer:
     xor ecx, ecx
 
 inner:
-    cmp cl, BYTE PTR measuresPerSequence[ebx]
+    cmp cl, BYTE PTR measuresPerSegment[ebx]
     je loopAfter
     push ebx
     mov eax, 12
     call RandomRange
     add eax, cPitch
-    mov ebx, ecx
-    shl ebx, 1
-    mov BYTE PTR measuresInSequence[edx+ebx], al
-    call WriteHex
-    call CrLf
+    invoke writeMeasuresInSegments, bl, cl, 0, al
     push edx
     xor edx, edx
     mov eax, 15
@@ -1024,8 +1003,7 @@ inner:
     mul ebx
     pop edx
     mov ebx, ecx
-    shl ebx, 1
-    mov BYTE PTR measuresInSequence[edx+ebx+1], al
+    invoke writeMeasuresInSegments, bl, cl, 1, al
     pop ebx
     inc cl
     jmp inner
@@ -1033,7 +1011,7 @@ inner:
 loopAfter:
     mov ecx, ebx
     xor eax, eax
-    mov al, BYTE PTR measuresPerSequence[ecx]
+    mov al, BYTE PTR measuresPerSegment[ecx]
     add edx, eax
     inc ecx
     jmp outer
@@ -1049,7 +1027,7 @@ notesSequence:
     mov al, BYTE PTR sequence[ecx]
     xor ecx, ecx
     innerNotes:
-        cmp cl, BYTE PTR measuresPerSequence[eax]
+        cmp cl, BYTE PTR measuresPerSegment[eax]
         je loopAfterNotes
         xor ebx, ebx
         add bl, BYTE PTR segmentOffsets[eax]
@@ -1062,28 +1040,43 @@ notesSequence:
         add eax, 11
         mov edi, eax
         add edi, track1Chunk
-        mov eax, ecx
-        shl eax, 1
+        pop eax
         ; bottom note on
-        mov dl, BYTE PTR measuresInSequence[esi+eax]
+        push eax
+        push ebx
+        mov bl, al
+        invoke readMeasuresInSegments, bl, cl
+        pop ebx
+        mov dl, al
         mov bl, 90h
         xor bh, bh
         call noteEvent
         ; second note on
-        mov dl, BYTE PTR measuresInSequence[esi+eax+1]
-        mov dl, chordVals[edx]
-        add dl, BYTE PTR measuresInSequence[esi+eax]
+        pop eax
+        push eax
+        movzx ebx, al
+        invoke readMeasuresInSegments, bl, cl
+        mov dl, al
+        xor ebx, ebx
+        mov bl, ah
+        add dl, chordVals[ebx]
         mov bl, 90h
         call noteEvent
         ; third note on
-        mov dl, BYTE PTR measuresInSequence[esi+eax+1]
-        mov dl, chordVals[edx+1]
-        add dl, BYTE PTR measuresInSequence[esi+eax]
+        pop eax
+        push eax
+        movzx ebx, al
+        invoke readMeasuresInSegments, bl, cl
+        mov dl, al
+        xor ebx, ebx
+        mov bl, ah
+        add dl, chordVals[ebx+1]
         mov bl, 90h
-        add dl, chordVals[esi+1]
         call noteEvent
 
         ; top note on
+        pop eax
+        shl eax, 1
         mov dl, BYTE PTR measuresInSequence[esi+eax+1]
         mov dl, chordVals[edx+2]
         add dl, BYTE PTR measuresInSequence[esi+eax]
@@ -1118,7 +1111,6 @@ notesSequence:
         add dl, chordVals[esi+2]
         mov bl, 80h
         CALL noteEvent
-        pop eax
         inc ecx
         inc currentMeasure
         jmp innerNotes
