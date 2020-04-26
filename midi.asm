@@ -204,7 +204,7 @@ sequencer:
         jmp closeAndQuit
     .endif
     mov measuresPerSequence, eax
-    mov edi, measuresPerSequence    
+    mov edi, measuresPerSequence
     invoke HeapAlloc, hHeap, HEAP_ZERO_MEMORY, segmentCount
     .if eax == NULL
         call WriteWindowsMsg
@@ -391,6 +391,7 @@ trackPrep:
     mov [edi-1], BYTE PTR 0
 
     ; prepare counter for looping
+<<<<<<< HEAD
     xor ecx, ecx
     xor ecx, ecx
     cmp mode, 0
