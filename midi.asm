@@ -165,22 +165,23 @@ main PROC
 
 promptMode:
     ; prompt for mode
-    mov edx, OFFSET modeAskMsg
-    call WriteString
-    call ReadChar
-    call CrLF
-    cmp al, "R"
-    je random
-    cmp al, "r"
-    je random
-    cmp al, "S"
-    je sequencer
-    cmp al, "s"
-    je sequencer
-    mov edx, OFFSET invalidInputMsg
-    call WriteString
-    call CrLf
-    jmp promptMode
+    ;mov edx, OFFSET modeAskMsg
+    ;call WriteString
+    ;call ReadChar
+    ;call CrLF
+    ;cmp al, "R"
+    ;je random
+    ;cmp al, "r"
+    ;je random
+    ;cmp al, "S"
+    ;je sequencer
+    ;cmp al, "s"
+    ;je sequencer
+    ;mov edx, OFFSET invalidInputMsg
+    ;call WriteString
+    ;call CrLf
+    ;jmp promptMode
+    jmp random
 
 sequencer:
     mov mode, 1
