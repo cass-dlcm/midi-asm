@@ -96,21 +96,21 @@ Error ENDP
 
 ;-------------------------------------------------------------------------------
 noteEvent PROC USES ebx edx,
-    time:BYTE,
-    event:BYTE,
-    pitch:BYTE
+    time:BYTE,                                  ; the delta time of the event
+    event:BYTE,                                 ; the type of note event
+    pitch:BYTE                                  ; the pitch of the note
 ; stores a note event in the dword specified by EDI
 ; Returns: nothing
 ;-------------------------------------------------------------------------------
     mov bh, time
-    cmp bh, 80h
+    cmp bh, 80h                                 ; check that the time is valid
     jb continue0
     call DumpRegs
     mov edx, OFFSET timeOorErr
     call Error
 continue0:
     mov dl, pitch
-    cmp dl, 80h
+    cmp dl, 80h                                 ; check that the pitch is valid
     jb continue1
     call DumpRegs
     mov edx, OFFSET pitchOorErr
@@ -118,7 +118,7 @@ continue0:
 continue1:
     mov dh, event
     mov [edi], bh                               ; delta time
-    mov [edi+1], dh                             ; note event, channel 0
+    mov [edi+1], dh                             ; note event
     mov [edi+2], dl                             ; pitch in dl register
     mov [edi+3], BYTE PTR 40h                   ; velocity of 64 (medium)
     add edi, 4
