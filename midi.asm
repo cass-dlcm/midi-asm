@@ -1,6 +1,6 @@
 INCLUDE Irvine32.inc
 .data
-fileName BYTE 0ffh DUP(0)
+fileName BYTE 0fbh DUP(0)
 
 invalidInputMsg BYTE "You have put in an invalid input. Please try again.", 0
 fileNamePrompt BYTE "Enter the filename: ", 0
@@ -140,8 +140,12 @@ main PROC
     mov edx, OFFSET fileNamePrompt
     call WriteString
     mov edx, OFFSET fileName
-    mov ecx, 0ffh
+    mov ecx, 0fbh
     call ReadString
+    mov fileName[eax], "."
+    mov fileName[eax+1], "m"
+    mov fileName[eax+2], "i"
+    mov fileName[eax+3], "d"
     call CreateOutputFile
     .if EAX == INVALID_HANDLE_VALUE
         call WriteWindowsMsg
