@@ -2,20 +2,20 @@ INCLUDE Irvine32.inc
 .data
 fileName BYTE 0fbh DUP(0)
 
-invalidInputMsg BYTE "You have put in an invalid input. Please try again.", 0
-fileNamePrompt BYTE "Enter the filename: ", 0
-tempoPrompt BYTE "Please enter a tempo range. To set a specific tempo, type it in for both the min and the max.", 0
-minTempoPrompt BYTE "Enter the minimum tempo: ", 0
-maxTempoPrompt BYTE "Enter the maximum tempo: ", 0
-outTempoPrompt BYTE "The generated tempo is: ", 0
-modeAskMsg BYTE "Choose a mode; Sequencer (S) or Random (R): ", 0
-sequenceCountAskMsg BYTE "Enter the number of unique sequences: ", 0
+invalidInputMsg BYTE "You have put in an invalid input. Please try again.", 0 ;if user entered something that was wrong
+fileNamePrompt BYTE "Enter the filename: ", 0 ;prompts user for file name
+tempoPrompt BYTE "Please enter a tempo range. To set a specific tempo, type it in for both the min and the max.", 0 ;explains prompted input for user
+minTempoPrompt BYTE "Enter the minimum tempo: ", 0 ;prompts for min bpm
+maxTempoPrompt BYTE "Enter the maximum tempo: ", 0 ;prompts for max bpm
+outTempoPrompt BYTE "The generated tempo is: ", 0 ;tells user the limited rng bpm
+modeAskMsg BYTE "Choose a mode; Sequencer (S) or Random (R): ", 0 ;prompts user to choose if music is in sequence or random
+sequenceCountAskMsg BYTE "Enter the number of unique sequences: ", 0 ;if sequence is chosen, it asks for the number of them
 sequenceMeasuresCountAskMsgP1 BYTE "Enter the number of measures in sequence " , 0
-sequenceMeasuresCountAskMsgP2 BYTE ": ", 0
-measurePrompt BYTE "Please enter a measure range. To set a specific number of measures, type it in for both the min and the max.", 0
-minMeasurePrompt BYTE "Enter the minimum number of measures: ", 0
-maxMeasurePrompt BYTE "Enter the maximum number of measures: ", 0
-outMeasurePrompt BYTE "The generated number of measures is: ", 0
+sequenceMeasuresCountAskMsgP2 BYTE ": ", 0 ;prompts user for number of measures in sequence
+measurePrompt BYTE "Please enter a measure range. To set a specific number of measures, type it in for both the min and the max.", 0 ;explains to user what next prompts are for
+minMeasurePrompt BYTE "Enter the minimum number of measures: ", 0 ;prompts for min wanted measures
+maxMeasurePrompt BYTE "Enter the maximum number of measures: ", 0 ;prompts for max wanted measuers
+outMeasurePrompt BYTE "The generated number of measures is: ", 0 ;outputs the limited rng measure generated
 errorMsg BYTE "An error has occured. Terminating.", 0
 segmentNumOobErr BYTE "The segment number (in ESI) is out of bounds!", 0
 measureNumOobErr BYTE "The message number (in BL) is out of bounds!", 0
