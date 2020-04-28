@@ -21,6 +21,7 @@ segmentNumOobErr BYTE "The segment number (in ESI) is out of bounds!", 0        
 measureNumOobErr BYTE "The message number (in BL) is out of bounds!", 0         ; tells if user message is out of bounds
 timeOorErr BYTE "The time (in BH) is too high!", 0                              ; tells if inputted time is out of bounds
 pitchOorErr BYTE "The pitch (in DL) is too high!", 0                            ; tells if user pitch is too high
+invalidRange BYTE "The range you specified is invalid!", 0
 
 chordNames BYTE "M", 0,
                 "m", 0,
@@ -90,6 +91,8 @@ measuresInSequence dword ?
 hFile  HANDLE ?                                 ; handle to the file
 hHeap  HANDLE ?                                 ; handle to the heap
 .code
+
+drum0 PROTO, measure:DWORD
 
 ;-------------------------------------------------------------------------------
 Error PROC
@@ -175,6 +178,11 @@ main PROC
     mov edx, OFFSET maxTempoPrompt
     call WriteString
     call readInt
+    cmp eax, minTempo
+    jae tempoContinue
+    mov edx, OFFSET invalidRange
+    call Error
+tempoContinue:
     sub eax, minTempo
     add eax, 1
     call RandomRange
@@ -272,6 +280,11 @@ random:
     mov edx, OFFSET maxMeasurePrompt
     call WriteString
     call readInt
+    cmp eax, minMeasures
+    jae randomContinue
+    mov edx, OFFSET invalidRange
+    call Error
+randomContinue:
     sub eax, minMeasures
     add eax, 1
     call RandomRange
@@ -908,3 +921,10 @@ quit:
 	INVOKE ExitProcess, 0			; end the program
 main ENDP
 END main
+
+drum0 PROC USES EAX,
+    measure:DWORD
+    mov edi, track3Chunk
+    add edi, 40h
+    ret
+drum0 ENDP
