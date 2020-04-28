@@ -1,23 +1,21 @@
 INCLUDE Irvine32.inc
 .data
-fileName BYTE 0ffh DUP(0)
+fileName BYTE 0fbh DUP(0)
 
-invalidInputMsg BYTE "You have put in an invalid input. Please try again.", 0
-fileNamePrompt BYTE "Enter the filename: ", 0
-tempoPrompt BYTE "Please enter a tempo range. To set a specific tempo, type it in for both the min and the max.", 0
-minTempoPrompt BYTE "Enter the minimum tempo: ", 0
-maxTempoPrompt BYTE "Enter the maximum tempo: ", 0
-outTempoPrompt BYTE "The generated tempo is: ", 0
-modeAskMsg BYTE "Choose a mode; Sequencer (S) or Random (R): ", 0
-sequenceCountAskMsg BYTE "Enter the number of unique segments (in hexadecimal): ", 0
-sequenceMeasuresCountAskMsgP1 BYTE "Enter (in hexadecimal) the number of measures in segment " , 0
-sequenceMeasuresCountAskMsgP2 BYTE ": ", 0
-howManyInSequenceAskMsg BYTE "Enter (in hexadecimal) the number of segments in your sequence: ", 0
-segmentAskMsg BYTE "Enter (in hexadecimal) the number of the segment that comes next: ", 0
-measurePrompt BYTE "Please enter a measure range. To set a specific number of measures, type it in for both the min and the max.", 0
-minMeasurePrompt BYTE "Enter the minimum number of measures: ", 0
-maxMeasurePrompt BYTE "Enter the maximum number of measures: ", 0
-outMeasurePrompt BYTE "The generated number of measures is: ", 0
+invalidInputMsg BYTE "You have put in an invalid input. Please try again.", 0 ;if user entered something that was wrong
+fileNamePrompt BYTE "Enter the filename: ", 0 ;prompts user for file name
+tempoPrompt BYTE "Please enter a tempo range. To set a specific tempo, type it in for both the min and the max.", 0 ;explains prompted input for user
+minTempoPrompt BYTE "Enter the minimum tempo: ", 0 ;prompts for min bpm
+maxTempoPrompt BYTE "Enter the maximum tempo: ", 0 ;prompts for max bpm
+outTempoPrompt BYTE "The generated tempo is: ", 0 ;tells user the limited rng bpm
+modeAskMsg BYTE "Choose a mode; Sequencer (S) or Random (R): ", 0 ;prompts user to choose if music is in sequence or random
+sequenceCountAskMsg BYTE "Enter the number of unique sequences: ", 0 ;if sequence is chosen, it asks for the number of them
+sequenceMeasuresCountAskMsgP1 BYTE "Enter the number of measures in sequence " , 0
+sequenceMeasuresCountAskMsgP2 BYTE ": ", 0 ;prompts user for number of measures in sequence
+measurePrompt BYTE "Please enter a measure range. To set a specific number of measures, type it in for both the min and the max.", 0 ;explains to user what next prompts are for
+minMeasurePrompt BYTE "Enter the minimum number of measures: ", 0 ;prompts for min wanted measures
+maxMeasurePrompt BYTE "Enter the maximum number of measures: ", 0 ;prompts for max wanted measuers
+outMeasurePrompt BYTE "The generated number of measures is: ", 0 ;outputs the limited rng measure generated
 errorMsg BYTE "An error has occured. Terminating.", 0
 segmentNumOobErr BYTE "The segment number (in ESI) is out of bounds!", 0
 measureNumOobErr BYTE "The message number (in BL) is out of bounds!", 0
@@ -95,28 +93,30 @@ hFile  HANDLE ?                                 ; handle to the file
 hHeap  HANDLE ?                                 ; handle to the heap
 .code
 
+;-------------------------------------------------------------------------------
 Error PROC
+;-------------------------------------------------------------------------------
     call WriteString
     invoke ExitProcess, 0
 Error ENDP
 
 ;-------------------------------------------------------------------------------
 noteEvent PROC USES ebx edx,
-    time:BYTE,
-    event:BYTE,
-    pitch:BYTE
+    time:BYTE,                                  ; the delta time of the event
+    event:BYTE,                                 ; the type of note event
+    pitch:BYTE                                  ; the pitch of the note
 ; stores a note event in the dword specified by EDI
 ; Returns: nothing
 ;-------------------------------------------------------------------------------
     mov bh, time
-    cmp bh, 80h
+    cmp bh, 80h                                 ; check that the time is valid
     jb continue0
     call DumpRegs
     mov edx, OFFSET timeOorErr
     call Error
 continue0:
     mov dl, pitch
-    cmp dl, 80h
+    cmp dl, 80h                                 ; check that the pitch is valid
     jb continue1
     call DumpRegs
     mov edx, OFFSET pitchOorErr
@@ -124,7 +124,7 @@ continue0:
 continue1:
     mov dh, event
     mov [edi], bh                               ; delta time
-    mov [edi+1], dh                             ; note event, channel 0
+    mov [edi+1], dh                             ; note event
     mov [edi+2], dl                             ; pitch in dl register
     mov [edi+3], BYTE PTR 40h                   ; velocity of 64 (medium)
     add edi, 4
@@ -196,7 +196,6 @@ continue1:
     ret
 writeMeasuresInSegments ENDP
 
-
 main PROC
     ; initialize the randomizer
     call Randomize
@@ -212,8 +211,12 @@ main PROC
     mov edx, OFFSET fileNamePrompt
     call WriteString
     mov edx, OFFSET fileName
-    mov ecx, 0ffh
+    mov ecx, 0fbh
     call ReadString
+    mov fileName[eax], "."
+    mov fileName[eax+1], "m"
+    mov fileName[eax+2], "i"
+    mov fileName[eax+3], "d"
     call CreateOutputFile
     .if EAX == INVALID_HANDLE_VALUE
         call WriteWindowsMsg
