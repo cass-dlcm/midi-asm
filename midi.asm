@@ -72,6 +72,10 @@ track1ChunkLen dword 84fh
 track2Chunk dword ?
 track2ChunkLen dword 100fh
 
+; drum track (not yet implemented)
+track3Chunk dword ?
+track3ChunkLen dword 100fh
+
 cPitch dword 3Ch                                ; middle c in midi
 
 minMeasures dword ?                             ; minimum number of measrues to generate
@@ -358,6 +362,37 @@ trackPrep:
     mov [edi+9], BYTE PTR 0C1h
     mov [edi+0ah], BYTE PTR 25
     add edi, track2ChunkLen
+    mov [edi-4], BYTE PTR 0
+    mov [edi-3], BYTE PTR 0ffh
+    mov [edi-2], BYTE PTR 2fh
+    mov [edi-1], BYTE PTR 0
+
+    ; allocate memory for track 3
+    invoke HeapAlloc, hHeap, HEAP_ZERO_MEMORY, track3ChunkLen
+    .if eax == NULL
+        call WriteWindowsMsg
+        jmp closeAndQuit
+    .endif
+    mov track3Chunk, eax
+
+    ; set meta info for track 3
+    mov edi, track3Chunk
+    mov [edi], BYTE PTR "M"
+    mov [edi+1], BYTE PTR "T"
+    mov [edi+2], BYTE PTR "r"
+    mov [edi+3], BYTE PTR "k"
+    mov eax, track3ChunkLen
+    sub eax, 8
+    mov [edi+7], al
+    mov [edi+6], ah
+    shr eax, 8
+    mov [edi+5], ah
+    shr eax, 8
+    mov [edi+4], ah
+    mov [edi+8], BYTE PTR 0
+    mov [edi+9], BYTE PTR 0CAh
+    mov [edi+0ah], BYTE PTR 77h
+    add edi, track3ChunkLen
     mov [edi-4], BYTE PTR 0
     mov [edi-3], BYTE PTR 0ffh
     mov [edi-2], BYTE PTR 2fh
