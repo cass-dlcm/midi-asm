@@ -2,25 +2,25 @@ INCLUDE Irvine32.inc
 .data
 fileName BYTE 0fbh DUP(0)
 
-invalidInputMsg BYTE "You have put in an invalid input. Please try again.", 0 ;if user entered something that was wrong
-fileNamePrompt BYTE "Enter the filename: ", 0 ;prompts user for file name
-tempoPrompt BYTE "Please enter a tempo range. To set a specific tempo, type it in for both the min and the max.", 0 ;explains prompted input for user
-minTempoPrompt BYTE "Enter the minimum tempo: ", 0 ;prompts for min bpm
-maxTempoPrompt BYTE "Enter the maximum tempo: ", 0 ;prompts for max bpm
-outTempoPrompt BYTE "The generated tempo is: ", 0 ;tells user the limited rng bpm
-modeAskMsg BYTE "Choose a mode; Sequencer (S) or Random (R): ", 0 ;prompts user to choose if music is in sequence or random
-sequenceCountAskMsg BYTE "Enter the number of unique sequences: ", 0 ;if sequence is chosen, it asks for the number of them
+invalidInputMsg BYTE "You have put in an invalid input. Please try again.", 0   ; if user entered something that was wrong
+fileNamePrompt BYTE "Enter the filename: ", 0                                   ; prompts user for file name
+tempoPrompt BYTE "Please enter a tempo range. To set a specific tempo, type it in for both the min and the max.", 0 ; explains prompted input for user
+minTempoPrompt BYTE "Enter the minimum tempo: ", 0                              ; prompts for min bpm
+maxTempoPrompt BYTE "Enter the maximum tempo: ", 0                              ; prompts for max bpm
+outTempoPrompt BYTE "The generated tempo is: ", 0                               ; tells user the limited rng bpm
+modeAskMsg BYTE "Choose a mode; Sequencer (S) or Random (R): ", 0               ; prompts user to choose if music is in sequence or random
+sequenceCountAskMsg BYTE "Enter the number of unique sequences: ", 0            ; if sequence is chosen, it asks for the number of them
 sequenceMeasuresCountAskMsgP1 BYTE "Enter the number of measures in sequence " , 0
-sequenceMeasuresCountAskMsgP2 BYTE ": ", 0 ;prompts user for number of measures in sequence
-measurePrompt BYTE "Please enter a measure range. To set a specific number of measures, type it in for both the min and the max.", 0 ;explains to user what next prompts are for
-minMeasurePrompt BYTE "Enter the minimum number of measures: ", 0 ;prompts for min wanted measures
-maxMeasurePrompt BYTE "Enter the maximum number of measures: ", 0 ;prompts for max wanted measuers
-outMeasurePrompt BYTE "The generated number of measures is: ", 0 ;outputs the limited rng measure generated
-errorMsg BYTE "An error has occured. Terminating.", 0
-segmentNumOobErr BYTE "The segment number (in ESI) is out of bounds!", 0
-measureNumOobErr BYTE "The message number (in BL) is out of bounds!", 0
-timeOorErr BYTE "The time (in BH) is too high!", 0
-pitchOorErr BYTE "The pitch (in DL) is too high!", 0
+sequenceMeasuresCountAskMsgP2 BYTE ": ", 0                                      ; prompts user for number of measures in sequence
+measurePrompt BYTE "Please enter a measure range. To set a specific number of measures, type it in for both the min and the max.", 0 ; explains to user what next prompts are for
+minMeasurePrompt BYTE "Enter the minimum number of measures: ", 0               ; prompts for min wanted measures
+maxMeasurePrompt BYTE "Enter the maximum number of measures: ", 0               ; prompts for max wanted measuers
+outMeasurePrompt BYTE "The generated number of measures is: ", 0                ; outputs the limited rng measure generated
+errorMsg BYTE "An error has occured. Terminating.", 0                           ; error message produced if something goes wrong
+segmentNumOobErr BYTE "The segment number (in ESI) is out of bounds!", 0        ; tells if user segment is out of bounds
+measureNumOobErr BYTE "The message number (in BL) is out of bounds!", 0         ; tells if user message is out of bounds
+timeOorErr BYTE "The time (in BH) is too high!", 0                              ; tells if inputted time is out of bounds
+pitchOorErr BYTE "The pitch (in DL) is too high!", 0                            ; tells if user pitch is too high
 
 chordNames BYTE "M", 0,
                 "m", 0,
@@ -108,17 +108,17 @@ noteEvent PROC USES ebx edx,
 ;-------------------------------------------------------------------------------
     mov bh, time
     cmp bh, 80h                                 ; check that the time is valid
-    jb continue0
-    call DumpRegs
-    mov edx, OFFSET timeOorErr
-    call Error
+    jb continue0                                ; jump if time is valid
+    call DumpRegs                               ; clear registers
+    mov edx, OFFSET timeOorErr                  ; pass type of error
+    call Error                                  ; call time error if invalid
 continue0:
     mov dl, pitch
     cmp dl, 80h                                 ; check that the pitch is valid
-    jb continue1
-    call DumpRegs
-    mov edx, OFFSET pitchOorErr
-    call Error
+    jb continue1                                ; jump if pitch is valid
+    call DumpRegs                               ; clear registers
+    mov edx, OFFSET pitchOorErr                 ; pass type of error
+    call Error                                  ; call pitch error if invalid
 continue1:
     mov dh, event
     mov [edi], bh                               ; delta time
@@ -141,19 +141,19 @@ main PROC
     mov hHeap, eax
     
     ; prompt for the filename and create the file, creating the header chunk
-    mov edx, OFFSET fileNamePrompt
-    call WriteString
-    mov edx, OFFSET fileName
+    mov edx, OFFSET fileNamePrompt              ; preps prompt for user
+    call WriteString                            ; prints prompt for user
+    mov edx, OFFSET fileName                    ; preps variable for filename
     mov ecx, 0fbh
-    call ReadString
-    mov fileName[eax], "."
+    call ReadString                             ; takes user's input
+    mov fileName[eax], "."                      ; add .mid extension to file name
     mov fileName[eax+1], "m"
     mov fileName[eax+2], "i"
     mov fileName[eax+3], "d"
-    call CreateOutputFile
-    .if EAX == INVALID_HANDLE_VALUE
-        call WriteWindowsMsg
-        jmp quit
+    call CreateOutputFile                       ; initializes .mid file creation
+    .if EAX == INVALID_HANDLE_VALUE             ; checks for invalid handle
+        call WriteWindowsMsg                    ; prints error
+        jmp quit                                ; quits program
     .endif
     mov hFile,eax
     mov ecx, headerChunkLen
