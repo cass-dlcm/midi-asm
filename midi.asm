@@ -99,6 +99,8 @@ drum1 PROTO
 drum2 PROTO
 drum3 PROTO
 drum4 PROTO
+drum5 PROTO
+drum6 PROTO
 
 ;-------------------------------------------------------------------------------
 Error PROC
@@ -425,9 +427,11 @@ trackPrep:
 notes: 
     cmp ecx, measureCount
     je write
+    call drum6
+    comment @
     mov eax, 5
     call RandomRange
-    cmp eax, 1
+    cmp eax, 6
     je drumCall1
     jb drumCall0
     ja above1
@@ -437,20 +441,27 @@ above1:
     jb drumCall2
     ja drumCall4
 drumCall0:
-    invoke drum0
+    call drum0
     jmp notesContinue
 drumCall1:
-    invoke drum1
+    call drum1
     jmp notesContinue
 drumCall2:
-    invoke drum2
+    call drum2
     jmp notesContinue
 drumCall3:
-    invoke drum3
+    call drum3
     jmp notesContinue
 drumCall4:
-    invoke drum4
+    call drum4
     jmp notesContinue
+drumCall5:
+    call drum5
+    jmp notesContinue
+drumCall6:
+    call drum6
+    jmp notesContinue
+    @
 notesContinue:
     mov eax, 12
     call RandomRange
@@ -1167,6 +1178,67 @@ drumLoop:
 endLoop:
     ret
 drum4 ENDP
+
+drum5 PROC USES ECX EDI
+    mov edi, drumOffset
+    add edi, track3Chunk
+    add drumOffset, 0b0h
+    mov ecx, 2
+drumLoop:
+    cmp ecx, 0
+    je endLoop
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 24, 89h, 48
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 24, 89h, 48
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 24, 89h, 48
+    invoke noteEvent, 0, 89h, 38
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 24, 89h, 48
+    invoke noteEvent, 0, 89h, 38
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 24, 89h, 48
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 24, 89h, 48
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 24, 89h, 48
+    invoke noteEvent, 0, 89h, 38
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 24, 89h, 48
+    dec ecx
+    jmp drumLoop
+endLoop:
+    ret
+drum5 ENDP
+
+drum6 PROC USES ECX EDI
+    mov edi, drumOffset
+    add edi, track3Chunk
+    add drumOffset, 0c0h
+    mov ecx, 4
+drumLoop0:
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 24, 89h, 48
+    invoke noteEvent, 0, 89h, 38
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 24, 89h, 48
+    loop drumLoop0
+    mov ecx, 4
+drumLoop1:
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 24, 89h, 48
+    invoke noteEvent, 0, 89h, 38
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 24, 89h, 38
+    loop drumLoop1
+    ret
+drum6 ENDP
 
 drumStub PROC USES ECX EDI
     mov edi, drumOffset
