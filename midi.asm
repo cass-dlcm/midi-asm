@@ -118,6 +118,14 @@ drumC PROTO
 drumD PROTO
 drumE PROTO
 
+
+
+drumF PROTO
+
+
+
+drum10 PROTO
+
 ;-------------------------------------------------------------------------------
 Error PROC
 ;-------------------------------------------------------------------------------
@@ -1551,6 +1559,44 @@ drumLoop:
 endLoop:
     ret
 drumF ENDP
+
+drum10 PROC USES ECX EDI            ; kick var 2
+    mov edi, drumOffset
+    add edi, track3Chunk
+    add drumOffset, 100h
+    mov ecx, 2
+drumLoop:
+    cmp ecx, 0
+    je endLoop
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 24, 89h, 35
+    invoke noteEvent, 0, 89h, 48
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 24, 89h, 48
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 24, 89h, 48
+    invoke noteEvent, 0, 89h, 38
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 24, 89h, 35
+    invoke noteEvent, 0, 89h, 48
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 24, 89h, 48
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 24, 89h, 48
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 24, 89h, 48
+    invoke noteEvent, 0, 89h, 38
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 24, 89h, 48
+    dec ecx
+    jmp drumLoop
+endLoop:
+    ret
+drum10 ENDP
 
 drumStub PROC USES ECX EDI
     mov edi, drumOffset
