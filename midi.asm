@@ -101,6 +101,9 @@ drum3 PROTO
 drum4 PROTO
 drum5 PROTO
 drum6 PROTO
+drum7 PROTO
+
+drum8 PROTO
 
 ;-------------------------------------------------------------------------------
 Error PROC
@@ -427,6 +430,8 @@ trackPrep:
 notes: 
     cmp ecx, measureCount
     je write
+    call drum8
+    COMMENT @
     mov eax, 7
     call RandomRange
     cmp eax, 3
@@ -464,6 +469,7 @@ drumCall5:
 drumCall6:
     call drum6
     jmp notesContinue
+    @
 notesContinue:
     mov eax, 12
     call RandomRange
@@ -1241,6 +1247,58 @@ drumLoop1:
     loop drumLoop1
     ret
 drum6 ENDP
+
+drum7 PROC USES ECX EDI             ; 1/4 note surfin
+    mov edi, drumOffset
+    add edi, track3Chunk
+    add drumOffset, 100h
+    mov ecx, 2
+drumLoop:
+    cmp ecx, 0
+    je endLoop
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 48, 89h, 48
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 24, 89h, 48
+    invoke noteEvent, 0, 89h, 38
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 24, 89h, 38
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 48, 89h, 48
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 48, 89h, 48
+    invoke noteEvent, 0, 89h, 38
+    dec ecx
+    jmp drumLoop
+endLoop:
+    ret
+drum7 ENDP
+
+drum8 PROC USES ECX EDI             ; 2 hand swing
+    mov edi, drumOffset
+    add edi, track3Chunk
+    add drumOffset, 0a0h
+    mov ecx, 4
+drumLoop:
+    cmp ecx, 0
+    je endLoop
+    invoke noteEvent, 0, 99h, 45    ; low tom
+    invoke noteEvent, 32, 89h, 45
+    invoke noteEvent, 0, 99h, 45    ; low tom
+    invoke noteEvent, 16, 89h, 45
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 0, 99h, 45    ; low tom
+    invoke noteEvent, 32, 89h, 38
+    invoke noteEvent, 0, 89h, 45
+    invoke noteEvent, 0, 99h, 45    ; low tom
+    invoke noteEvent, 16, 89h, 45
+    dec ecx
+    jmp drumLoop
+endLoop:
+    ret
+drum8 ENDP
 
 drumStub PROC USES ECX EDI
     mov edi, drumOffset
