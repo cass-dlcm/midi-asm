@@ -427,19 +427,22 @@ trackPrep:
 notes: 
     cmp ecx, measureCount
     je write
-    call drum6
-    comment @
-    mov eax, 5
+    mov eax, 7
     call RandomRange
-    cmp eax, 6
-    je drumCall1
-    jb drumCall0
-    ja above1
-above1:
     cmp eax, 3
     je drumCall3
-    jb drumCall2
-    ja drumCall4
+    jb below3
+    ja above3
+below3:
+    cmp eax, 1
+    je drumCall1
+    jb drumCall0
+    ja drumCall2
+above3:
+    cmp eax, 5
+    je drumCall5
+    ja drumCall6
+    jb drumCall4
 drumCall0:
     call drum0
     jmp notesContinue
@@ -461,7 +464,6 @@ drumCall5:
 drumCall6:
     call drum6
     jmp notesContinue
-    @
 notesContinue:
     mov eax, 12
     call RandomRange
@@ -1179,7 +1181,7 @@ endLoop:
     ret
 drum4 ENDP
 
-drum5 PROC USES ECX EDI
+drum5 PROC USES ECX EDI             ; surfing with two hands
     mov edi, drumOffset
     add edi, track3Chunk
     add drumOffset, 0b0h
@@ -1215,7 +1217,7 @@ endLoop:
     ret
 drum5 ENDP
 
-drum6 PROC USES ECX EDI
+drum6 PROC USES ECX EDI             ; mixed hands
     mov edi, drumOffset
     add edi, track3Chunk
     add drumOffset, 0c0h
