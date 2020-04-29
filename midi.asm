@@ -105,6 +105,7 @@ drum6 PROTO
 drum7 PROTO
 drum8 PROTO
 drumA PROTO
+drumB PROTO
 
 ;-------------------------------------------------------------------------------
 Error PROC
@@ -431,7 +432,7 @@ trackPrep:
 notes: 
     cmp ecx, measureCount
     je write
-    call drumA
+    call drumB
     COMMENT @
     mov eax, 7
     call RandomRange
@@ -1340,6 +1341,30 @@ drumLoop:
 endLoop:
     ret
 drumA ENDP
+
+drumB PROC USES ECX EDI             ; kick and snare var 2
+    mov edi, drumOffset
+    add edi, track3Chunk
+    add drumOffset, 50h
+    mov ecx, 2
+drumLoop:
+    cmp ecx, 0
+    je endLoop
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 48, 89h, 35
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 48, 89h, 38
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 24, 89h, 35
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 24, 89h, 35
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 48, 89h, 38
+    dec ecx
+    jmp drumLoop
+endLoop:
+    ret
+drumB ENDP
 
 drumStub PROC USES ECX EDI
     mov edi, drumOffset
