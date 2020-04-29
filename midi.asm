@@ -430,7 +430,7 @@ trackPrep:
 notes: 
     cmp ecx, measureCount
     je write
-    call drum8
+    call drum9
     COMMENT @
     mov eax, 7
     call RandomRange
@@ -1299,6 +1299,24 @@ drumLoop:
 endLoop:
     ret
 drum8 ENDP
+
+drum9 PROC USES ECX EDI             ; kick and snare
+    mov edi, drumOffset
+    add edi, track3Chunk
+    add drumOffset, 40h
+    mov ecx, 4
+drumLoop:
+    cmp ecx, 0
+    je endLoop
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 48, 89h, 35
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 48, 89h, 38
+    dec ecx
+    jmp drumLoop
+endLoop:
+    ret
+drum9 ENDP
 
 drumStub PROC USES ECX EDI
     mov edi, drumOffset
