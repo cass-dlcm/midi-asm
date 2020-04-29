@@ -51,7 +51,7 @@ chordVals BYTE 4, 7, 12, 3, 7, 12,              ; M & m
 headerChunk db "MThd",                          ; file identifier
                0, 0, 0, 6,                      ; length of remaining header chunk
                0, 1,                            ; midi format
-               0, 3,                            ; number of tracks
+               0, 4,                            ; number of tracks
                0, 60h                           ; number of divisions in a quarter note
 headerChunkLen equ $-headerChunk                ; length of the header
 
@@ -93,6 +93,8 @@ hHeap  HANDLE ?                                 ; handle to the heap
 .code
 
 drum0 PROTO, measure:DWORD
+drum1 PROTO, measure:DWORD
+drum2 PROTO, measure:DWORD
 
 ;-------------------------------------------------------------------------------
 Error PROC
@@ -308,6 +310,12 @@ trackPrep:
     mul ebx
     add eax, 0fh
     mov track2ChunkLen, eax
+    mov eax, measureCount
+    mov ebx, 0f0h
+    xor edx, edx
+    mul ebx
+    add eax, 0fh
+    mov track3ChunkLen, eax
 
     mov eax, measureCount
     shl eax, 1
@@ -403,8 +411,8 @@ trackPrep:
     shr eax, 8
     mov [edi+4], ah
     mov [edi+8], BYTE PTR 0
-    mov [edi+9], BYTE PTR 0CAh
-    mov [edi+0ah], BYTE PTR 77h
+    mov [edi+9], BYTE PTR 0C9h
+    mov [edi+0ah], BYTE PTR 119
     add edi, track3ChunkLen
     mov [edi-4], BYTE PTR 0
     mov [edi-3], BYTE PTR 0ffh
@@ -417,6 +425,7 @@ trackPrep:
 notes: 
     cmp ecx, measureCount
     je write
+    invoke drum1, ecx
     mov eax, 12
     call RandomRange
     add eax, cPitch
@@ -913,6 +922,16 @@ write:
         jmp closeAndQuit
     .endif
 
+    ; write the third track
+    mov ecx, track3ChunkLen
+    mov eax, hFile
+    mov edx, track3Chunk
+    call WriteToFile
+    .if EAX == 0
+        call WriteWindowsMsg
+        jmp closeAndQuit
+    .endif
+
 closeAndQuit:
     mov eax, hFile
     call CloseFile
@@ -920,11 +939,87 @@ closeAndQuit:
 quit:
 	INVOKE ExitProcess, 0			; end the program
 main ENDP
-END main
 
-drum0 PROC USES EAX,
+drum0 PROC USES EAX EBX ECX EDX EDI,
     measure:DWORD
     mov edi, track3Chunk
-    add edi, 40h
+    add edi, 0bh
+    mov eax, measure
+    mov bx, 0e0h
+    xor edx, edx
+    mul bx
+    add edi, eax
+    mov ecx, 4
+drumLoop:
+    cmp ecx, 0
+    je endLoop
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 12, 89h, 35
+    invoke noteEvent, 0, 89h, 48
+    invoke noteEvent, 12, 99h, 48  ; Hi Mid Tom
+    invoke noteEvent, 12, 89h, 48
+    invoke noteEvent, 0, 99h, 35   ; Acoustic Bass Drum
+    invoke noteEvent, 12, 89h, 35
+    invoke noteEvent, 0, 99h, 48   ; Hi Mid Tom
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 24, 89h, 48
+    invoke noteEvent, 0, 89h, 38
+    invoke noteEvent, 0, 99h, 48  ; Hi Mid Tom
+    invoke noteEvent, 24, 89h, 48
+    dec ecx
+    jmp drumLoop
+endLoop:
     ret
 drum0 ENDP
+
+drum1 PROC USES EAX EBX ECX EDX EDI,
+    measure:DWORD
+    mov edi, track3Chunk
+    add edi, 0bh
+    mov eax, measure
+    mov bx, 0f0h
+    xor edx, edx
+    mul bx
+    add edi, eax
+    mov ecx, 2
+drumLoop:
+    cmp ecx, 0
+    je endLoop
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 24, 89h, 35
+    invoke noteEvent, 0, 89h, 48
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 12, 89h, 48
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 12, 89h, 35
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 24, 89h, 48
+    invoke noteEvent, 0, 89h, 38
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 12, 89h, 48
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 12, 89h, 38
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 24, 89h, 35
+    invoke noteEvent, 0, 89h, 48
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 24, 89h, 35
+    invoke noteEvent, 0, 89h, 48
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 24, 89h, 48
+    invoke noteEvent, 0, 89h, 38
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 24, 89h, 48
+    dec ecx
+    jmp drumLoop
+endLoop:
+    ret
+drum1 ENDP
+
+END main
