@@ -63,38 +63,41 @@ track0Chunk db 4dh, 54h, 72h, 6bh,              ; track identifier
                0, 0FFh, 59h, 2, 0, 0,           ; key signature of song
                00h, 0FFh, 2Fh, 0                ; end of track
 track0ChunkLen equ $-track0Chunk                ; length of the entire track
-minTempo dword ?
+minTempo dword 0
 
 ; piano track
-track1Chunk dword ?
 track1ChunkLen dword 84fh
 
 ; guitar track
-track2Chunk dword ?
 track2ChunkLen dword 100fh
 
 ; drum track (not yet implemented)
-track3Chunk dword ?
 track3ChunkLen dword 100fh
 
 cPitch dword 3Ch                                ; middle c in midi
 
-minMeasures dword ?                             ; minimum number of measrues to generate
-measureCount dword ?                            ; variable of measures to generate
+minMeasures dword 0                             ; minimum number of measrues to generate
+measureCount dword 0                            ; variable of measures to generate
 
-mode db ?
+mode db 0
 
+drumOffset dword 0bh
 sequenceCount db 0
-measuresPerSequence dword ?
-measuresInSequence dword ?
+
 .data?
 hFile  HANDLE ?                                 ; handle to the file
 hHeap  HANDLE ?                                 ; handle to the heap
+track1Chunk dword ?
+track2Chunk dword ?
+track3Chunk dword ?
+measuresPerSequence dword ?
+measuresInSequence dword ?
 .code
 
-drum0 PROTO, measure:DWORD
-drum1 PROTO, measure:DWORD
-drum2 PROTO, measure:DWORD
+drum0 PROTO
+drum1 PROTO
+drum2 PROTO
+drum3 PROTO
 
 ;-------------------------------------------------------------------------------
 Error PROC
@@ -311,7 +314,7 @@ trackPrep:
     add eax, 0fh
     mov track2ChunkLen, eax
     mov eax, measureCount
-    mov ebx, 0f0h
+    mov ebx, 100h
     xor edx, edx
     mul ebx
     add eax, 0fh
@@ -413,11 +416,7 @@ trackPrep:
     mov [edi+8], BYTE PTR 0
     mov [edi+9], BYTE PTR 0C9h
     mov [edi+0ah], BYTE PTR 119
-    add edi, track3ChunkLen
-    mov [edi-4], BYTE PTR 0
-    mov [edi-3], BYTE PTR 0ffh
-    mov [edi-2], BYTE PTR 2fh
-    mov [edi-1], BYTE PTR 0
+    
 
     ; prepare counter for looping
     xor ecx, ecx
@@ -425,7 +424,29 @@ trackPrep:
 notes: 
     cmp ecx, measureCount
     je write
-    invoke drum1, ecx
+    mov eax, 4
+    call RandomRange
+    cmp eax, 1
+    je drumCall1
+    jb drumCall0
+    ja above1
+above1:
+    cmp eax, 3
+    je drumCall3
+    jb drumCall2
+drumCall0:
+    invoke drum0
+    jmp notesContinue
+drumCall1:
+    invoke drum1
+    jmp notesContinue
+drumCall2:
+    invoke drum2
+    jmp notesContinue
+drumCall3:
+    invoke drum3
+    jmp notesContinue
+notesContinue:
     mov eax, 12
     call RandomRange
     add eax, cPitch
@@ -922,6 +943,24 @@ write:
         jmp closeAndQuit
     .endif
 
+    mov eax, drumOffset
+    add eax, 4h
+    mov track3ChunkLen, eax
+    mov edi, track3Chunk
+    mov eax, track3ChunkLen
+    sub eax, 8
+    mov [edi+7], al
+    mov [edi+6], ah
+    shr eax, 8
+    mov [edi+5], ah
+    shr eax, 8
+    mov [edi+4], ah
+    add edi, track3ChunkLen
+    mov [edi-4], BYTE PTR 0
+    mov [edi-3], BYTE PTR 0ffh
+    mov [edi-2], BYTE PTR 2fh
+    mov [edi-1], BYTE PTR 0
+
     ; write the third track
     mov ecx, track3ChunkLen
     mov eax, hFile
@@ -940,15 +979,10 @@ quit:
 	INVOKE ExitProcess, 0			; end the program
 main ENDP
 
-drum0 PROC USES EAX EBX ECX EDX EDI,
-    measure:DWORD
-    mov edi, track3Chunk
-    add edi, 0bh
-    mov eax, measure
-    mov bx, 0e0h
-    xor edx, edx
-    mul bx
-    add edi, eax
+drum0 PROC USES ECX EDI
+    mov edi, drumOffset
+    add edi, track3Chunk
+    add drumOffset, 0e0h
     mov ecx, 4
 drumLoop:
     cmp ecx, 0
@@ -973,15 +1007,10 @@ endLoop:
     ret
 drum0 ENDP
 
-drum1 PROC USES EAX EBX ECX EDX EDI,
-    measure:DWORD
-    mov edi, track3Chunk
-    add edi, 0bh
-    mov eax, measure
-    mov bx, 0f0h
-    xor edx, edx
-    mul bx
-    add edi, eax
+drum1 PROC USES ECX EDI
+    mov edi, drumOffset
+    add edi, track3Chunk
+    add drumOffset, 0f0h
     mov ecx, 2
 drumLoop:
     cmp ecx, 0
@@ -1022,15 +1051,10 @@ endLoop:
     ret
 drum1 ENDP
 
-drum2 PROC USES EAX EBX ECX EDX EDI,
-    measure:DWORD
-    mov edi, track3Chunk
-    add edi, 0bh
-    mov eax, measure
-    mov bx, 0f0h
-    xor edx, edx
-    mul bx
-    add edi, eax
+drum2 PROC USES ECX EDI
+    mov edi, drumOffset
+    add edi, track3Chunk
+    add drumOffset, 0e0h
     mov ecx, 2
 drumLoop:
     cmp ecx, 0
@@ -1068,5 +1092,51 @@ drumLoop:
 endLoop:
     ret
 drum2 ENDP
+
+drum3 PROC USES ECX EDI
+    mov edi, drumOffset
+    add edi, track3Chunk
+    add drumOffset, 100h
+    mov ecx, 2
+drumLoop:
+    cmp ecx, 0
+    je endLoop
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 12, 89h, 35
+    invoke noteEvent, 0, 89h, 48
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 6, 89h, 48
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 6, 89h, 35
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 6, 89h, 48
+    invoke noteEvent, 0, 89h, 38
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 6, 89h, 35
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 6, 89h, 48
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 6, 89h, 35
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 6, 89h, 48
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 6, 89h, 35
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 6, 89h, 48
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 6, 89h, 35
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 12, 89h, 48
+    invoke noteEvent, 0, 89h, 38
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 12, 89h, 48
+    dec ecx
+    jmp drumLoop
+endLoop:
+    ret
+drum3 ENDP
 
 END main
