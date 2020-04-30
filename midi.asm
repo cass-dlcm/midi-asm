@@ -84,6 +84,9 @@ mode db 0
 drumOffset dword 0bh
 sequenceCount db 0
 
+currentPitch byte 3ch
+currentChord byte 0
+
 .data?
 hFile  HANDLE ?                                 ; handle to the file
 hHeap  HANDLE ?                                 ; handle to the heap
@@ -683,7 +686,7 @@ notesContinue:
     add eax, cPitch
     mov ebx, ecx
     shl ebx, 1
-    mov BYTE PTR measuresInSequence[ebx], al
+    mov currentPitch, al
     mov eax, ecx
     xor edx, edx
     mov ebx, 33
@@ -697,9 +700,9 @@ notesContinue:
     mul ebx
     mov ebx, ecx
     shl ebx, 1
-    mov BYTE PTR measuresInSequence[ebx+1], al
+    mov currentChord, al
     xor eax, eax
-    mov al, BYTE PTR measuresInSequence[ebx+1]
+    mov al, currentChord
     mov esi, OFFSET chordVals
     add esi, eax
     add edi, track1Chunk
@@ -707,8 +710,8 @@ notesContinue:
     ; bottom note on
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
-    INVOKE noteEvent, 0, 90h, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
+    INVOKE noteEvent, 0, 90h, currentPitch
 
     ; second note on
     add dl, [esi]
@@ -717,21 +720,21 @@ notesContinue:
     ; third note on
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     add dl, [esi+1]
     INVOKE noteEvent, 0, 90h, dl
 
     ; top note on
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     add dl, [esi+2]
     INVOKE noteEvent, 0, 90h, dl
 
     ; bottom note off
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     mov [edi], BYTE PTR 83h
     mov [1+edi], BYTE PTR 00h
     mov [2+edi], BYTE PTR 80h
@@ -746,14 +749,14 @@ notesContinue:
     ; third note off
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     add dl, [esi+1]
     INVOKE noteEvent, 0, 80h, dl
 
     ; top note off
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     add dl, [esi+2]
     INVOKE noteEvent, 0, 80h, dl
 
@@ -775,7 +778,7 @@ guitarPattern0:
     xor eax, eax
     mov ebx, ecx
     shl ebx, 1
-    mov al, BYTE PTR measuresInSequence[ebx+1]
+    mov al, currentChord
     mov esi, OFFSET chordVals
     add esi, eax
     add edi, track2Chunk
@@ -783,7 +786,7 @@ guitarPattern0:
     ; bottom guitar note on
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     INVOKE noteEvent, 0, 91h, dl
 
@@ -794,7 +797,7 @@ guitarPattern0:
     ; bottom guitar note off
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     INVOKE noteEvent, 30h, 81h, dl
 
@@ -807,7 +810,7 @@ guitarPattern0:
     ; top guitar note off
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     add dl, [esi+2]
     INVOKE noteEvent, 30h, 81h, dl
@@ -815,7 +818,7 @@ guitarPattern0:
     ; third guitar note on
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
     INVOKE noteEvent, 0, 91h, dl
@@ -823,7 +826,7 @@ guitarPattern0:
     ; second guitar note off
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
     INVOKE noteEvent, 30h, 81h, dl
@@ -831,7 +834,7 @@ guitarPattern0:
     ; bottom guitar note on
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     INVOKE noteEvent, 0, 91h, dl
 
@@ -843,7 +846,7 @@ guitarPattern0:
     ; top guitar note on
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     add dl, [esi+2]
     INVOKE noteEvent, 0, 91h, dl
@@ -852,7 +855,7 @@ guitarPattern0:
     ; bottom guitar note off
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     INVOKE noteEvent, 30h, 81h, dl
 
@@ -864,7 +867,7 @@ guitarPattern0:
     ; top guitar note off
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     add dl, [esi+2]
     INVOKE noteEvent, 30h, 81h, dl
@@ -872,7 +875,7 @@ guitarPattern0:
     ; third guitar note on
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
     INVOKE noteEvent, 0, 91h, dl
@@ -881,7 +884,7 @@ guitarPattern0:
     ; second guitar note off
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     add dl, [esi]
     INVOKE noteEvent, 30h, 81h, dl
@@ -889,7 +892,7 @@ guitarPattern0:
     ; third guitar note off
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
     INVOKE noteEvent, 0, 81h, dl
@@ -907,7 +910,7 @@ guitarPattern1:
     xor eax, eax
     mov ebx, ecx
     shl ebx, 1
-    mov al, BYTE PTR measuresInSequence[ebx+1]
+    mov al, currentChord
     mov esi, OFFSET chordVals
     add esi, eax
     add edi, track2Chunk
@@ -915,7 +918,7 @@ guitarPattern1:
     ; bottom guitar note on
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     INVOKE noteEvent, 0, 91h, dl
 
@@ -926,7 +929,7 @@ guitarPattern1:
     ; bottom guitar note off
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     INVOKE noteEvent, 30h, 81h, dl
 
@@ -937,7 +940,7 @@ guitarPattern1:
     ; third guitar note off
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
     INVOKE noteEvent, 30h, 81h, dl
@@ -945,7 +948,7 @@ guitarPattern1:
     ; top guitar note on
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     add dl, [esi+2]
     INVOKE noteEvent, 0, 91h, dl
@@ -953,7 +956,7 @@ guitarPattern1:
     ; second guitar note off
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     add dl, [esi]
     INVOKE noteEvent, 30h, 81h, dl
@@ -961,7 +964,7 @@ guitarPattern1:
     ; bottom guitar note on
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     INVOKE noteEvent, 0, 91h, dl
 
@@ -972,7 +975,7 @@ guitarPattern1:
     ; third guitar note on
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
     INVOKE noteEvent, 0, 91h, dl
@@ -980,7 +983,7 @@ guitarPattern1:
     ; bottom guitar note off
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     INVOKE noteEvent, 30h, 81h, dl
 
@@ -991,7 +994,7 @@ guitarPattern1:
     ; third guitar note off
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
     INVOKE noteEvent, 30h, 81h, dl
@@ -999,7 +1002,7 @@ guitarPattern1:
     ; top guitar note on
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     add dl, [esi+2]
     INVOKE noteEvent, 0, 91h, dl
@@ -1007,7 +1010,7 @@ guitarPattern1:
     ; second guitar note off
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     add dl, [esi]
     INVOKE noteEvent, 30h, 81h, dl
@@ -1015,7 +1018,7 @@ guitarPattern1:
     ; top guitar note off
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     add dl, [esi+2]
     INVOKE noteEvent, 0, 81h, dl
@@ -1033,7 +1036,7 @@ guitarPattern2:
     xor eax, eax
     mov ebx, ecx
     shl ebx, 1
-    mov al, BYTE PTR measuresInSequence[ebx+1]
+    mov al, currentChord
     mov esi, OFFSET chordVals
     add esi, eax
     add edi, track2Chunk
@@ -1041,7 +1044,7 @@ guitarPattern2:
     ; bottom guitar note on
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     INVOKE noteEvent, 0, 91h, dl
 
@@ -1052,14 +1055,14 @@ guitarPattern2:
     ; bottom guitar note off
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     INVOKE noteEvent, 60h, 81h, dl
 
     ; second guitar note on
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     add dl, [esi]
     INVOKE noteEvent, 0, 91h, dl
@@ -1067,7 +1070,7 @@ guitarPattern2:
     ; top guitar note off
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     add dl, [esi+2]
     INVOKE noteEvent, 30h, 81h, dl
@@ -1075,7 +1078,7 @@ guitarPattern2:
     ; third guitar note on
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
     INVOKE noteEvent, 0, 91h, dl
@@ -1083,7 +1086,7 @@ guitarPattern2:
     ; second guitar note off
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     add dl, [esi]
     INVOKE noteEvent, 30h, 81h, dl
@@ -1091,7 +1094,7 @@ guitarPattern2:
     ; bottom guitar note on
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     INVOKE noteEvent, 0, 91h, dl
 
@@ -1102,7 +1105,7 @@ guitarPattern2:
     ; top guitar note on
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     add dl, [esi+2]
     INVOKE noteEvent, 0, 91h, dl
@@ -1110,7 +1113,7 @@ guitarPattern2:
     ; bottom guitar note off
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     INVOKE noteEvent, 30h, 81h, dl
 
@@ -1121,7 +1124,7 @@ guitarPattern2:
     ; top guitar note off
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     add dl, [esi+2]
     INVOKE noteEvent, 30h, 81h, dl
@@ -1129,7 +1132,7 @@ guitarPattern2:
     ; third guitar note on
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
     INVOKE noteEvent, 0, 91h, dl
@@ -1137,7 +1140,7 @@ guitarPattern2:
     ; second guitar note off
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     add dl, [esi]
     INVOKE noteEvent, 30h, 81h, dl
@@ -1145,7 +1148,7 @@ guitarPattern2:
     ; third guitar note off
     mov ebx, ecx
     shl ebx, 1
-    mov dl, BYTE PTR measuresInSequence[ebx]
+    mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
    INVOKE noteEvent, 0, 81h, dl
