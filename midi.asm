@@ -2873,7 +2873,7 @@ drum28 ENDP
 drum29 PROC USES ECX EDI              ; reggaeton
     mov edi, drumOffset
     add edi, track3Chunk
-    add drumOffset, 80h
+    add drumOffset, 100h
     mov ecx, 4
 drumLoop:
     cmp ecx, 0
@@ -3409,7 +3409,7 @@ drum33 ENDP
 drum34 PROC USES ECX EDI            ; smells like that beat
     mov edi, drumOffset
     add edi, track3Chunk
-    add drumOffset, 100h
+    add drumOffset, 0e0h
     mov ecx, 2
 drumLoop:
     cmp ecx, 0
@@ -3518,7 +3518,7 @@ drum37 PROC USES ECX EDI            ; disco 3
     mov edi, drumOffset
     add edi, track3Chunk
     add drumOffset, 140h
-    mov ecx, 2
+    mov ecx, 4
 drumLoop:
     cmp ecx, 0
     je endLoop
@@ -3715,8 +3715,8 @@ drum3C ENDP
 drum3D PROC USES ECX EDI            ; swing the hats
     mov edi, drumOffset
     add edi, track3Chunk
-    add drumOffset, 140h
-    mov ecx, 2
+    add drumOffset, 0c0h
+    mov ecx, 4
 drumLoop:
     cmp ecx, 0
     je endLoop
@@ -3775,5 +3775,6 @@ drumLoop:
 endLoop:
     ret
 drum ENDP
+
 
 END main
