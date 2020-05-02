@@ -3780,6 +3780,183 @@ endLoop:
     ret
 drum3E ENDP
 
+drum3F PROC USES ECX EDI            ; swingin' mix
+    mov edi, drumOffset
+    add edi, track3Chunk
+    add drumOffset, 0c0h
+    mov ecx, 4
+drumLoop:
+    cmp ecx, 0
+    je endLoop
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 30, 89h, 35
+    invoke noteEvent, 0, 89h, 48
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 18, 89h, 35
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 30, 89h, 48
+    invoke noteEvent, 0, 89h, 38
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 18, 89h, 38
+    dec ecx
+    jmp drumLoop
+endLoop:
+    ret
+drum3F ENDP
+
+drum40 PROC USES ECX EDI            ; pirates?
+    mov edi, drumOffset
+    add edi, track3Chunk
+    add drumOffset, 0b0h
+    mov ecx, 2
+drumLoop:
+    cmp ecx, 0
+    je endLoop
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 0, 99h, 45    ; low tom
+    invoke noteEvent, 48, 89h, 35
+    invoke noteEvent, 0, 89h, 48
+    invoke noteEvent, 0, 89h, 45
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 0, 99h, 45    ; low tom
+    invoke noteEvent, 30, 89h, 38
+    invoke noteEvent, 0, 89h, 45
+    invoke noteEvent, 0, 99h, 45    ; low tom
+    invoke noteEvent, 18, 89h, 45
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 0, 99h, 45    ; low tom
+    invoke noteEvent, 48, 89h, 35
+    invoke noteEvent, 0, 89h, 48
+    invoke noteEvent, 0, 89h, 45
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 0, 99h, 45    ; low tom
+    invoke noteEvent, 48, 89h, 38
+    invoke noteEvent, 0, 89h, 45
+    dec ecx
+    jmp drumLoop
+endLoop:
+    ret
+drum40 ENDP
+
+drum41 PROC USES ECX EDI            ; detroit, swing city
+    mov edi, drumOffset
+    add edi, track3Chunk
+    add drumOffset, 0c0h
+    mov ecx, 2
+drumLoop:
+    cmp ecx, 0
+    je endLoop
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 30, 89h, 35
+    invoke noteEvent, 0, 89h, 48
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 18, 89h, 35
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 30, 89h, 48
+    invoke noteEvent, 0, 89h, 38
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 18, 89h, 38
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 18, 89h, 35
+    invoke noteEvent, 0, 89h, 48
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 12, 89h, 38
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 18, 89h, 35
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 48, 89h, 48
+    invoke noteEvent, 0, 89h, 38
+    dec ecx
+    jmp drumLoop
+endLoop:
+    ret
+drum41 ENDP
+
+drum42 PROC USES ECX EDI            ; swing and stomp
+    mov edi, drumOffset
+    add edi, track3Chunk
+    add drumOffset, 0c0h
+    mov ecx, 4
+drumLoop:
+    cmp ecx, 0
+    je endLoop
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 30, 89h, 35
+    invoke noteEvent, 0, 89h, 48
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 18, 89h, 35
+    invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 30, 89h, 48
+    invoke noteEvent, 0, 89h, 38
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 18, 89h, 35
+    dec ecx
+    jmp drumLoop
+endLoop:
+    ret
+drum42 ENDP
+
+drum43 PROC USES ECX EDI            ; omg pirates! (not finished)
+    mov edi, drumOffset
+    add edi, track3Chunk
+    add drumOffset, 0b0h
+    mov ecx, 2
+drumLoop:
+    cmp ecx, 0
+    je endLoop
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 0, 99h, 45    ; low tom
+    invoke noteEvent, 48, 89h, 35
+    invoke noteEvent, 0, 89h, 45
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 0, 99h, 45    ; low tom
+    invoke noteEvent, 30, 89h, 38
+    invoke noteEvent, 0, 89h, 45
+    invoke noteEvent, 0, 99h, 48    ; high mid tom
+    invoke noteEvent, 18, 89h, 48
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 0, 99h, 45    ; low tom
+    invoke noteEvent, 18, 89h, 35
+    invoke noteEvent, 0, 89h, 45
+    invoke noteEvent, 0, 99h, 48    ; high mid tom
+    invoke noteEvent, 18, 89h, 48
+    invoke noteEvent, 0, 99h, 35    ; Acoustic Bass Drum
+    invoke noteEvent, 18, 89h, 35
+    invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
+    invoke noteEvent, 0, 99h, 45    ; low tom
+    invoke noteEvent, 48, 89h, 38
+    invoke noteEvent, 0, 89h, 45
+    dec ecx
+    jmp drumLoop
+endLoop:
+    ret
+drum43 ENDP
+
+drum PROC USES ECX EDI            ;
+    mov edi, drumOffset
+    add edi, track3Chunk
+    add drumOffset, 140h
+    mov ecx, 2
+drumLoop:
+    cmp ecx, 0
+    je endLoop
+
+    dec ecx
+    jmp drumLoop
+endLoop:
+    ret
+drum ENDP
+
 drum PROC USES ECX EDI            ;
     mov edi, drumOffset
     add edi, track3Chunk
