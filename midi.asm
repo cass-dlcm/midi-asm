@@ -19,21 +19,26 @@ timeOorErr BYTE "The time (in BH) is too high!", 0                              
 pitchOorErr BYTE "The pitch (in DL) is too high!", 0                            ; tells if user pitch is too high
 invalidRange BYTE "The range you specified is invalid!", 0
 
-chordNames BYTE "M", 0,
-                "m", 0,
-                "5", 0,
-                "7", 0,
-                "M7", 0,
-                "m7", 0,
-                "mM7", 0,
-                "6", 0,
-                "m6", 0,
-                "add9", 0,
-                "madd9", 0,
-                "7b5", 0,
-                "7#5", 0,
-                "m7b5", 0,
-                "m7#5", 0
+rootNames BYTE "C", 0, 0, 0,
+               "C#", 0, 0,
+               "D", 0, 0, 0,
+               "D#", 0, 0,
+               "E", 0, 0, 0,
+               "F", 0, 0, 0,
+               "F#", 0, 0,
+               "G", 0, 0, 0,
+               "G#", 0, 0,
+               "A", 0, 0, 0,
+               "A#", 0, 0,
+               "B", 0
+
+chordNames BYTE "M", 5 DUP (0), "m", 5 DUP (0),
+                "5", 5 DUP (0), "7", 5 DUP (0),
+                "M7", 4 DUP (0), "m7", 4 DUP (0), "mM7", 0, 0, 0
+chordNames2 BYTE "6", 5 DUP (0), "m6", 4 DUP (0),
+                 "add9", 0, 0, "madd9", 0,
+                 "7b5", 0, 0, 0, "7#5", 0, 0, 0,
+                 "m7b5", 0, 0, "m7#5", 0
 
 chordVals BYTE 4, 7, 12, 3, 7, 12,              ; M & m
                7, 12, 19, 4, 7, 10,             ; 5 & 7
@@ -917,6 +922,21 @@ notesContinue:
     mov esi, OFFSET chordVals
     add esi, eax
     add edi, track1Chunk
+
+    xor edx, edx
+    mov dl, currentPitch
+    sub edx, cPitch
+    shl edx, 2
+    add edx, OFFSET rootNames
+    call WriteString
+    xor edx, edx
+    mov dl, currentChord
+    shl edx, 1
+    add edx, OFFSET chordNames
+    call WriteString
+    call CrLf
+
+    xor edx, edx
 
     ; bottom note on
     mov ebx, ecx
