@@ -80,8 +80,6 @@ cPitch dword 3Ch                                ; middle c in midi
 minMeasures dword 0                             ; minimum number of measrues to generate
 measureCount dword 0                            ; variable of measures to generate
 
-mode db 0
-
 drumOffset dword 0bh
 sequenceCount db 0
 
