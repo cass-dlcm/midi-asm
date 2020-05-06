@@ -1,5 +1,7 @@
 INCLUDE Irvine32.inc
+includelib Bcrypt.lib
 .data
+
 fileName BYTE 0fbh DUP(0)
 
 invalidInputMsg BYTE "You have put in an invalid input. Please try again.", 0   ; if user entered something that was wrong
@@ -85,6 +87,12 @@ sequenceCount db 0
 
 currentPitch byte 3ch
 currentChord byte 0
+
+rngHandle HANDLE ?
+
+rngIdentifier WORD 52h, 4eh, 47h, 0
+
+randomNum BYTE ?
 
 .data?
 hFile  HANDLE ?                                 ; handle to the file
@@ -210,6 +218,27 @@ drum3C PROTO
 drum3D PROTO
 drum3E PROTO
 
+BCryptGenRandom PROTO,
+    hAlgorithm : PTR DWORD,
+    pbBuffer : PTR BYTE,
+    cbBuffer : DWORD,
+    dwFlags : DWORD,
+
+BCryptOpenAlgorithmProvider PROTO,
+    phAlgorithm:PTR DWORD,
+    pszAlgId : PTR BYTE,
+    pszImplementation : DWORD,
+    dwFlags : DWORD
+
+CreateFileW PROTO, ; create new file
+    pFilename : PTR BYTE, ; ptr to filename
+    accessMode : DWORD, ; access mode
+    shareMode : DWORD, ; share mode
+    lpSecurity : DWORD, ; can be NULL
+    howToCreate : DWORD, ; how to create the file
+    attributes : DWORD, ; file attributes
+    htemplate : DWORD; handle to template file
+
 ;-------------------------------------------------------------------------------
 Error PROC
 ;-------------------------------------------------------------------------------
@@ -240,17 +269,28 @@ continue0:
     call Error                                  ; call pitch error if invalid
 continue1:
     mov dh, event
-    mov [edi], bh                               ; delta time
-    mov [edi+1], dh                             ; note event
-    mov [edi+2], dl                             ; pitch in dl register
-    mov [edi+3], BYTE PTR 40h                   ; velocity of 64 (medium)
+    mov [edi], bh                                ; delta time
+    mov [edi + 1], dh                            ; note event
+    mov [edi + 2], dl                            ; pitch in dl register
+    mov [edi + 3], BYTE PTR 40h                  ; velocity of 64 (medium)
     add edi, 4
     ret
 noteEvent ENDP
 
+randRange PROC USES EAX ECX,
+    upperBound:BYTE
+try:
+    invoke BCryptGenRandom, rngHandle, ADDR randomNum, 1, 0
+    mov al, randomNum
+    cmp al, upperBound
+    jae try
+    ret
+randRange ENDP
+
 main PROC
     ; initialize the randomizer
     call Randomize
+    invoke BCryptOpenAlgorithmProvider, ADDR rngHandle, ADDR rngIdentifier, 0, 0
 
     invoke GetProcessHeap
     .if eax == NULL
@@ -269,7 +309,7 @@ main PROC
     mov fileName[eax+1], "m"
     mov fileName[eax+2], "i"
     mov fileName[eax+3], "d"
-    call CreateOutputFile                       ; initializes .mid file creation
+    INVOKE CreateFileA, ADDR fileName, FILE_APPEND_DATA, FILE_SHARE_READ, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, 0   ;using windows api
     .if EAX == INVALID_HANDLE_VALUE             ; checks for invalid handle
         call WriteWindowsMsg                    ; prints error
         jmp quit                                ; quits program
@@ -277,7 +317,7 @@ main PROC
     mov hFile,eax
     mov ecx, headerChunkLen
     mov edx, OFFSET headerChunk
-    call WriteToFile
+    invoke WriteFile, eax, edx, ecx, NULL, NULL ; using windows api
     .if EAX == 0
         call WriteWindowsMsg
         jmp closeAndQuit
@@ -306,7 +346,8 @@ tempoContinue0:
 tempoContinue:
     sub eax, minTempo
     add eax, 1
-    call RandomRange
+    invoke randRange, al
+    mov al, randomNum
     add eax, minTempo
     mov edx, OFFSET outTempoPrompt
     call WriteString
@@ -328,15 +369,13 @@ tempoContinue:
     mov ecx, track0ChunkLen
     mov eax, hFile
     mov edx, OFFSET track0Chunk
-    call WriteToFile
+    invoke WriteFile, eax, edx, ecx, NULL, NULL
     .if EAX == 0
         call WriteWindowsMsg
         jmp closeAndQuit
     .endif
 
 random:
-    mov mode, 0
-
     ; prompt for measures and display the result to the user
     mov edx, OFFSET measurePrompt
     call WriteString
@@ -360,7 +399,8 @@ randomContinue0:
 randomContinue1:
     sub eax, minMeasures
     add eax, 1
-    call RandomRange
+    invoke randRange, al
+    mov al, randomNum
     add eax, minMeasures
     mov edx, OFFSET outMeasurePrompt
     call WriteString
@@ -475,7 +515,6 @@ trackPrep:
     mov [edi+8], BYTE PTR 0
     mov [edi+9], BYTE PTR 0C9h
     mov [edi+0ah], BYTE PTR 119
-    
 
     ; prepare counter for looping
     xor ecx, ecx
@@ -483,10 +522,9 @@ trackPrep:
 notes: 
     cmp ecx, measureCount
     je write
-    call drum21
-    jmp notesContinue
     mov eax, 3fh
-    call RandomRange
+    invoke randRange, al
+    mov al, randomNum
     ; root of the decision tree
     cmp eax, 1fh
     jb below1F
@@ -896,10 +934,9 @@ drumCall3E:
     ; back to adding music notes
 notesContinue:
     mov eax, 12
-    call RandomRange
+    invoke randRange, al
+    mov al, randomNum
     add eax, cPitch
-    mov ebx, ecx
-    shl ebx, 1
     mov currentPitch, al
     mov eax, ecx
     xor edx, edx
@@ -907,19 +944,18 @@ notesContinue:
     mul ebx
     add eax, 11
     mov edi, eax
+    add edi, track1Chunk
     xor edx, edx
     mov eax, 15
-    call RandomRange
+    invoke randRange, al
+    mov al, randomNum
     mov ebx, 3
     mul ebx
-    mov ebx, ecx
-    shl ebx, 1
     mov currentChord, al
     xor eax, eax
     mov al, currentChord
     mov esi, OFFSET chordVals
     add esi, eax
-    add edi, track1Chunk
 
     xor edx, edx
     mov dl, currentPitch
@@ -937,32 +973,24 @@ notesContinue:
     xor edx, edx
 
     ; bottom note on
-    mov ebx, ecx
-    shl ebx, 1
-    mov dl, currentPitch
     INVOKE noteEvent, 0, 90h, currentPitch
 
     ; second note on
+    mov dl, currentPitch
     add dl, [esi]
     INVOKE noteEvent, 0, 90h, dl
 
     ; third note on
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     add dl, [esi+1]
     INVOKE noteEvent, 0, 90h, dl
 
     ; top note on
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     add dl, [esi+2]
     INVOKE noteEvent, 0, 90h, dl
 
     ; bottom note off
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     mov [edi], BYTE PTR 83h
     mov [1+edi], BYTE PTR 00h
@@ -972,109 +1000,94 @@ notesContinue:
     add edi, 5
 
     ; second note off
+    mov dl, currentPitch
     add dl, [esi]
     INVOKE noteEvent, 0, 80h, dl
 
     ; third note off
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     add dl, [esi+1]
     INVOKE noteEvent, 0, 80h, dl
 
     ; top note off
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     add dl, [esi+2]
     INVOKE noteEvent, 0, 80h, dl
 
+    mov eax, ecx
+    mov ebx, 40h
+    xor edx, edx
+    mul ebx
+    add eax, 0bh
+    mov edi, eax
+    add edi, track2Chunk
+    xor eax, eax
+    mov al, currentChord
+    mov esi, OFFSET chordVals
+    add esi, eax
     mov eax, 3
-    call RandomRange
+    invoke randRange, al
+    mov al, randomNum
     cmp eax, 1
     jb guitarPattern0
     je guitarPattern1
     ja guitarPattern2
 
 guitarPattern0:
-    ; prepare edi to point to the chunk
-    mov eax, ecx
-    xor edx, edx
-    mov ebx, 40h
-    mul ebx
-    add eax, 0bh
-    mov edi, eax
-    xor eax, eax
-    mov ebx, ecx
-    shl ebx, 1
-    mov al, currentChord
-    mov esi, OFFSET chordVals
-    add esi, eax
-    add edi, track2Chunk
-
     ; bottom guitar note on
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     INVOKE noteEvent, 0, 91h, dl
 
     ; top guitar note on
+    mov dl, currentPitch
+    sub dl, 12
     add dl, [esi+2]
     INVOKE noteEvent, 30h, 91h, dl
 
     ; bottom guitar note off
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     INVOKE noteEvent, 30h, 81h, dl
 
 
     ; second guitar note on
+    mov dl, currentPitch
+    sub dl, 12
     add dl, [esi]
     INVOKE noteEvent, 0, 91h, dl
 
-
     ; top guitar note off
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+2]
     INVOKE noteEvent, 30h, 81h, dl
     
     ; third guitar note on
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
     INVOKE noteEvent, 0, 91h, dl
 
     ; second guitar note off
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
     INVOKE noteEvent, 30h, 81h, dl
 
     ; bottom guitar note on
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     INVOKE noteEvent, 0, 91h, dl
 
     ; third guitar note off
+    mov dl, currentPitch
+    sub dl, 12
     add dl, [esi+1]
     INVOKE noteEvent, 30h, 81h, dl
 
 
     ; top guitar note on
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+2]
@@ -1082,28 +1095,24 @@ guitarPattern0:
 
 
     ; bottom guitar note off
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     INVOKE noteEvent, 30h, 81h, dl
 
 
     ; second guitar note on
+    mov dl, currentPitch
+    sub dl, 12
     add dl, [esi]
     INVOKE noteEvent, 0, 91h, dl
 
     ; top guitar note off
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+2]
     INVOKE noteEvent, 30h, 81h, dl
 
     ; third guitar note on
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
@@ -1111,16 +1120,12 @@ guitarPattern0:
 
 
     ; second guitar note off
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi]
     INVOKE noteEvent, 30h, 81h, dl
 
     ; third guitar note off
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
@@ -1130,123 +1135,93 @@ guitarPattern0:
     jmp notes
 
 guitarPattern1:
-    mov eax, ecx
-    mov ebx, 40h
-    xor edx, edx
-    mul ebx
-    add eax, 0bh
-    mov edi, eax
-    xor eax, eax
-    mov ebx, ecx
-    shl ebx, 1
-    mov al, currentChord
-    mov esi, OFFSET chordVals
-    add esi, eax
-    add edi, track2Chunk
-    
     ; bottom guitar note on
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     INVOKE noteEvent, 0, 91h, dl
 
     ; third guitar note on
+    mov dl, currentPitch
+    sub dl, 12
     add dl, [esi+1]
     INVOKE noteEvent, 30h, 91h, dl
 
     ; bottom guitar note off
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     INVOKE noteEvent, 30h, 81h, dl
 
     ; second guitar note on
+    mov dl, currentPitch
+    sub dl, 12
     add dl, [esi]
     INVOKE noteEvent, 0, 91h, dl
 
     ; third guitar note off
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
     INVOKE noteEvent, 30h, 81h, dl
     
     ; top guitar note on
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+2]
     INVOKE noteEvent, 0, 91h, dl
 
     ; second guitar note off
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi]
     INVOKE noteEvent, 30h, 81h, dl
 
     ; bottom guitar note on
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     INVOKE noteEvent, 0, 91h, dl
 
     ; top guitar note off
+    mov dl, currentPitch
+    sub dl, 12
     add dl, [esi+2]
     INVOKE noteEvent, 30h, 81h, dl
 
     ; third guitar note on
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
     INVOKE noteEvent, 0, 91h, dl
 
     ; bottom guitar note off
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     INVOKE noteEvent, 30h, 81h, dl
 
     ; second guitar note on
+    mov dl, currentPitch
+    sub dl, 12
     add dl, [esi]
     INVOKE noteEvent, 0, 91h, dl
 
     ; third guitar note off
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
     INVOKE noteEvent, 30h, 81h, dl
 
     ; top guitar note on
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+2]
     INVOKE noteEvent, 0, 91h, dl
 
     ; second guitar note off
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi]
     INVOKE noteEvent, 30h, 81h, dl
 
     ; top guitar note off
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+2]
@@ -1256,131 +1231,97 @@ guitarPattern1:
     jmp notes
 
 guitarPattern2:
-    mov eax, ecx
-    mov ebx, 40h
-    xor edx, edx
-    mul ebx
-    add eax, 0bh
-    mov edi, eax
-    xor eax, eax
-    mov ebx, ecx
-    shl ebx, 1
-    mov al, currentChord
-    mov esi, OFFSET chordVals
-    add esi, eax
-    add edi, track2Chunk
-    
     ; bottom guitar note on
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     INVOKE noteEvent, 0, 91h, dl
 
     ; top guitar note on
+    mov dl, currentPitch
+    sub dl, 12
     add dl, [esi+2]
     INVOKE noteEvent, 0, 91h, dl
 
     ; bottom guitar note off
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     INVOKE noteEvent, 60h, 81h, dl
 
     ; second guitar note on
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi]
     INVOKE noteEvent, 0, 91h, dl
 
     ; top guitar note off
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+2]
     INVOKE noteEvent, 30h, 81h, dl
     
     ; third guitar note on
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
     INVOKE noteEvent, 0, 91h, dl
 
     ; second guitar note off
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi]
     INVOKE noteEvent, 30h, 81h, dl
 
     ; bottom guitar note on
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     INVOKE noteEvent, 0, 91h, dl
 
     ; third guitar note off
+    mov dl, currentPitch
+    sub dl, 12
     add dl, [esi+1]
     INVOKE noteEvent, 30h, 81h, dl
 
     ; top guitar note on
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+2]
     INVOKE noteEvent, 0, 91h, dl
 
     ; bottom guitar note off
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     INVOKE noteEvent, 30h, 81h, dl
 
     ; second guitar note on
+    mov dl, currentPitch
+    sub dl, 12
     add dl, [esi]
     INVOKE noteEvent, 0, 91h, dl
 
     ; top guitar note off
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+2]
     INVOKE noteEvent, 30h, 81h, dl
 
     ; third guitar note on
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
     INVOKE noteEvent, 0, 91h, dl
 
     ; second guitar note off
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi]
     INVOKE noteEvent, 30h, 81h, dl
 
     ; third guitar note off
-    mov ebx, ecx
-    shl ebx, 1
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
-   INVOKE noteEvent, 0, 81h, dl
+    INVOKE noteEvent, 0, 81h, dl
 
     inc ecx
     jmp notes
@@ -1390,7 +1331,7 @@ write:
     mov ecx, track1ChunkLen
     mov eax, hFile
     mov edx, track1Chunk
-    call WriteToFile
+    invoke WriteFile, eax, edx, ecx, NULL, NULL
     .if EAX == 0
         call WriteWindowsMsg
         jmp closeAndQuit
@@ -1400,7 +1341,7 @@ write:
     mov ecx, track2ChunkLen
     mov eax, hFile
     mov edx, track2Chunk
-    call WriteToFile
+    invoke WriteFile, eax, edx, ecx, NULL, NULL
     .if EAX == 0
         call WriteWindowsMsg
         jmp closeAndQuit
@@ -1428,7 +1369,7 @@ write:
     mov ecx, track3ChunkLen
     mov eax, hFile
     mov edx, track3Chunk
-    call WriteToFile
+    invoke WriteFile, eax, edx, ecx, NULL, NULL
     .if EAX == 0
         call WriteWindowsMsg
         jmp closeAndQuit
@@ -1436,7 +1377,7 @@ write:
 
 closeAndQuit:
     mov eax, hFile
-    call CloseFile
+    invoke CloseHandle, eax         ; using windows api
 
 quit:
 	INVOKE ExitProcess, 0			; end the program
@@ -3262,12 +3203,13 @@ drumLoop:
     invoke noteEvent, 12, 89h, 35
     invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
     invoke noteEvent, 24, 89h, 48
+    dec ecx
     jmp drumLoop
 endLoop:
     ret
 drum30 ENDP
 
-drum31 PROC USES     EDI            ; kick polyrhythm
+drum31 PROC USES EDI                ; kick polyrhythm
     mov edi, drumOffset
     add edi, track3Chunk
     add drumOffset, 0f0h
