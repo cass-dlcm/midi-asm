@@ -67,6 +67,7 @@ track0Chunk db 4dh, 54h, 72h, 6bh,              ; track identifier
                00h, 0FFh, 2Fh, 0                ; end of track
 track0ChunkLen equ $-track0Chunk                ; length of the entire track
 minTempo dword 0
+tempo dword 0
 
 ; piano track
 track1ChunkLen dword 84fh
@@ -91,12 +92,17 @@ currentChord byte 0
 rngHandle HANDLE ?
 
 rngIdentifier WORD 52h, 4eh, 47h, 0
+STD_OUTPUT_HANDLE EQU - 11
 
 randomNum BYTE ?
+
+numStr BYTE 8 DUP(0), "h"
 
 .data?
 hFile  HANDLE ?                                 ; handle to the file
 hHeap  HANDLE ?                                 ; handle to the heap
+consoleOutHandle dd ?
+bytesWritten dd ?
 track1Chunk dword ?
 track2Chunk dword ?
 track3Chunk dword ?
@@ -239,10 +245,58 @@ CreateFileW PROTO, ; create new file
     attributes : DWORD, ; file attributes
     htemplate : DWORD; handle to template file
 
+GetProcessHeap PROTO
+
+HeapAlloc PROTO,
+    hHeap:DWORD, ; handle to private heap block
+    dwFlags : DWORD, ; heap allocation control flags
+    dwBytes : DWORD; number of bytes to allocate
+
+HeapFree PROTO,
+    hHeap:HANDLE, ; handle to heap with memory block
+    dwFlags : DWORD, ; heap free options
+    lpMem : DWORD; pointer to block to be freed
+
+; ------------------------------------------------------------------------------
+ConsoleWriteHex PROC USES EAX ECX,
+    num:DWORD
+; ------------------------------------------------------------------------------
+    mov ecx, 7
+    mov eax, num
+convertLoop:
+    and eax, 0fh
+    cmp eax, 0ah
+    jae letter
+    add eax, 30h
+    jmp store
+letter:
+    add eax, 37h
+store:
+    mov numStr[ecx], al
+    mov eax, num
+    shr eax, 4
+    mov num, eax
+    cmp ecx, 0
+    je write
+    dec ecx
+    jmp convertLoop
+write:
+    invoke WriteConsole, consoleOutHandle, offset numStr, 9, offset bytesWritten, 0
+    mov ecx, 7
+resetLoop:
+    mov numStr[ecx], 0
+    cmp ecx, 0
+    je done
+    dec ecx
+    jmp resetLoop
+done:
+    ret
+ConsoleWriteHex ENDP
+
 ;-------------------------------------------------------------------------------
 Error PROC
 ;-------------------------------------------------------------------------------
-    call WriteString
+    invoke WriteConsole, consoleOutHandle, edx, ecx, offset bytesWritten, 0
     invoke ExitProcess, 0
 Error ENDP
 
@@ -259,6 +313,7 @@ noteEvent PROC USES ebx edx,
     jb continue0                                ; jump if time is valid
     call DumpRegs                               ; clear registers
     mov edx, OFFSET timeOorErr                  ; pass type of error
+    mov ecx, sizeof timeOorErr
     call Error                                  ; call time error if invalid
 continue0:
     mov dl, pitch
@@ -266,6 +321,7 @@ continue0:
     jb continue1                                ; jump if pitch is valid
     call DumpRegs                               ; clear registers
     mov edx, OFFSET pitchOorErr                 ; pass type of error
+    mov ecx, sizeof pitchOorErr
     call Error                                  ; call pitch error if invalid
 continue1:
     mov dh, event
@@ -277,13 +333,15 @@ continue1:
     ret
 noteEvent ENDP
 
+;
 randRange PROC USES EAX ECX,
     upperBound:BYTE
+;
 try:
     invoke BCryptGenRandom, rngHandle, ADDR randomNum, 1, 0
     mov al, randomNum
     cmp al, upperBound
-    jae try
+    ja try
     ret
 randRange ENDP
 
@@ -298,10 +356,12 @@ main PROC
         jmp quit
     .endif
     mov hHeap, eax
+
+    INVOKE GetStdHandle, STD_OUTPUT_HANDLE
+    mov[consoleOutHandle], eax
     
     ; prompt for the filename and create the file, creating the header chunk
-    mov edx, OFFSET fileNamePrompt              ; preps prompt for user
-    call WriteString                            ; prints prompt for user
+    invoke WriteConsole, consoleOutHandle, OFFSET fileNamePrompt, sizeof fileNamePrompt, offset bytesWritten, 0
     mov edx, OFFSET fileName                    ; preps variable for filename
     mov ecx, 0fbh
     call ReadString                             ; takes user's input
@@ -325,23 +385,23 @@ main PROC
 
     ; prompt for tempo and display the result to the user
     mov edx, OFFSET tempoPrompt
-    call WriteString
+    invoke WriteConsole, consoleOutHandle, OFFSET tempoPrompt, sizeof tempoPrompt, offset bytesWritten, 0
     call crLf
-    mov edx, OFFSET minTempoPrompt
-    call WriteString
+    invoke WriteConsole, consoleOutHandle, OFFSET minTempoPrompt, sizeof minTempoPrompt, offset bytesWritten, 0
     call readInt
     cmp eax, 0
     jg tempoContinue0
     mov edx, OFFSET invalidRange
+    mov ecx, sizeof invalidRange
     call Error
 tempoContinue0:
     mov minTempo, eax
-    mov edx, OFFSET maxTempoPrompt
-    call WriteString
+    invoke WriteConsole, consoleOutHandle, OFFSET maxTempoPrompt, sizeof maxTempoPrompt, offset bytesWritten, 0
     call readInt
     cmp eax, minTempo
     jae tempoContinue
     mov edx, OFFSET invalidRange
+    mov ecx, sizeof invalidRange
     call Error
 tempoContinue:
     sub eax, minTempo
@@ -349,13 +409,13 @@ tempoContinue:
     invoke randRange, al
     mov al, randomNum
     add eax, minTempo
-    mov edx, OFFSET outTempoPrompt
-    call WriteString
-    call WriteDec
+    mov tempo, eax
+    invoke WriteConsole, consoleOutHandle, OFFSET outTempoPrompt, sizeof outTempoPrompt, offset bytesWritten, 0
+    invoke ConsoleWriteHex, tempo
     call crLf
 
     ; store the tempo
-    mov ebx, eax
+    mov ebx, tempo
     mov eax, 60000000
     xor edx, edx
     div ebx
@@ -377,39 +437,39 @@ tempoContinue:
 
 random:
     ; prompt for measures and display the result to the user
-    mov edx, OFFSET measurePrompt
-    call WriteString
+    invoke WriteConsole, consoleOutHandle, OFFSET measurePrompt, sizeof measurePrompt, offset bytesWritten, 0
     call crLf
     mov edx, OFFSET minMeasurePrompt
-    call WriteString
+    invoke WriteConsole, consoleOutHandle, OFFSET minMeasurePrompt, sizeof minMeasurePrompt, offset bytesWritten, 0
     call readInt
     cmp eax, 0
     jg randomContinue0
     mov edx, OFFSET invalidRange
+    mov ecx, sizeof invalidRange
     call Error
 randomContinue0:
     mov minMeasures, eax
     mov edx, OFFSET maxMeasurePrompt
-    call WriteString
+    invoke WriteConsole, consoleOutHandle, OFFSET maxMeasurePrompt, sizeof maxMeasurePrompt, offset bytesWritten, 0
     call readInt
     cmp eax, minMeasures
     jae randomContinue1
     mov edx, OFFSET invalidRange
+    mov ecx, sizeof invalidRange
     call Error
 randomContinue1:
     sub eax, minMeasures
-    add eax, 1
     invoke randRange, al
     mov al, randomNum
     add eax, minMeasures
-    mov edx, OFFSET outMeasurePrompt
-    call WriteString
-    call WriteDec
+    mov measureCount, eax
+    invoke WriteConsole, consoleOutHandle, OFFSET outMeasurePrompt, sizeof outMeasurePrompt, offset bytesWritten, 0
+    mov eax, measureCount
+    invoke ConsoleWriteHex, measureCount
     call crLf
     jmp trackPrep
 
 trackPrep:
-    mov measureCount, eax
     mov ebx, 33
     xor edx, edx
     mul ebx
@@ -522,7 +582,7 @@ trackPrep:
 notes: 
     cmp ecx, measureCount
     je write
-    mov eax, 3fh
+    mov eax, 3eh
     invoke randRange, al
     mov al, randomNum
     ; root of the decision tree
@@ -933,7 +993,7 @@ drumCall3E:
     jmp notesContinue
     ; back to adding music notes
 notesContinue:
-    mov eax, 12
+    mov eax, 11
     invoke randRange, al
     mov al, randomNum
     add eax, cPitch
@@ -946,7 +1006,7 @@ notesContinue:
     mov edi, eax
     add edi, track1Chunk
     xor edx, edx
-    mov eax, 15
+    mov eax, 14
     invoke randRange, al
     mov al, randomNum
     mov ebx, 3
@@ -962,12 +1022,14 @@ notesContinue:
     sub edx, cPitch
     shl edx, 2
     add edx, OFFSET rootNames
-    call WriteString
+    push ecx
+    invoke WriteConsole, consoleOutHandle, edx, 2, offset bytesWritten, 0
     xor edx, edx
     mov dl, currentChord
     shl edx, 1
     add edx, OFFSET chordNames
-    call WriteString
+    invoke WriteConsole, consoleOutHandle, edx, 5, offset bytesWritten, 0
+    pop ecx
     call CrLf
 
     xor edx, edx
@@ -1025,7 +1087,7 @@ notesContinue:
     mov al, currentChord
     mov esi, OFFSET chordVals
     add esi, eax
-    mov eax, 3
+    mov eax, 2
     invoke randRange, al
     mov al, randomNum
     cmp eax, 1
@@ -1336,6 +1398,7 @@ write:
         call WriteWindowsMsg
         jmp closeAndQuit
    .endif
+    invoke HeapFree, hHeap, 0, track1Chunk
 
     ; write the second track
     mov ecx, track2ChunkLen
@@ -1346,6 +1409,7 @@ write:
         call WriteWindowsMsg
         jmp closeAndQuit
     .endif
+    invoke HeapFree, hHeap, 0, track2Chunk
 
     mov eax, drumOffset
     add eax, 4h
@@ -1374,6 +1438,7 @@ write:
         call WriteWindowsMsg
         jmp closeAndQuit
     .endif
+    invoke HeapFree, hHeap, 0, track3Chunk
 
 closeAndQuit:
     mov eax, hFile
@@ -1609,22 +1674,30 @@ drum6 PROC USES ECX EDI             ; mixed hands
     add drumOffset, 0c0h
     mov ecx, 4
 drumLoop0:
+    cmp ecx, 0
+    je endLoop0
     invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
     invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
     invoke noteEvent, 24, 89h, 48
     invoke noteEvent, 0, 89h, 38
     invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
     invoke noteEvent, 24, 89h, 48
+    dec ecx
     loop drumLoop0
+endLoop0:
     mov ecx, 4
 drumLoop1:
+    cmp ecx, 0
+    je endLoop1
     invoke noteEvent, 0, 99h, 48    ; Hi Mid Tom
     invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
     invoke noteEvent, 24, 89h, 48
     invoke noteEvent, 0, 89h, 38
     invoke noteEvent, 0, 99h, 38    ; Acoustic Snare
     invoke noteEvent, 24, 89h, 38
+    dec ecx
     loop drumLoop1
+endLoop1:
     ret
 drum6 ENDP
 
