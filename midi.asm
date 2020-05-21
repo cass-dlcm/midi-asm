@@ -1,25 +1,30 @@
-INCLUDE Irvine32.inc
+.686P; Pentium Pro or later
+.MODEL flat, stdcall
+.STACK 4096
 includelib Bcrypt.lib
+includelib Kernel32.dll
 .data
 
-fileName BYTE 0fbh DUP(0)
+fileName BYTE 0ffh DUP(0)
 
-invalidInputMsg BYTE "You have put in an invalid input. Please try again.", 0   ; if user entered something that was wrong
-fileNamePrompt BYTE "Enter the filename: ", 0                                   ; prompts user for file name
-tempoPrompt BYTE "Please enter a tempo range. To set a specific tempo, type it in for both the min and the max.", 0 ; explains prompted input for user
-minTempoPrompt BYTE "Enter the minimum tempo: ", 0                              ; prompts for min bpm
-maxTempoPrompt BYTE "Enter the maximum tempo: ", 0                              ; prompts for max bpm
-outTempoPrompt BYTE "The generated tempo is: ", 0                               ; tells user the limited rng bpm
-measurePrompt BYTE "Please enter a measure range. To set a specific number of measures, type it in for both the min and the max.", 0 ; explains to user what next prompts are for
-minMeasurePrompt BYTE "Enter the minimum number of measures: ", 0               ; prompts for min wanted measures
-maxMeasurePrompt BYTE "Enter the maximum number of measures: ", 0               ; prompts for max wanted measuers
-outMeasurePrompt BYTE "The generated number of measures is: ", 0                ; outputs the limited rng measure generated
-errorMsg BYTE "An error has occured. Terminating.", 0                           ; error message produced if something goes wrong
-segmentNumOobErr BYTE "The segment number (in ESI) is out of bounds!", 0        ; tells if user segment is out of bounds
-measureNumOobErr BYTE "The message number (in BL) is out of bounds!", 0         ; tells if user message is out of bounds
-timeOorErr BYTE "The time (in BH) is too high!", 0                              ; tells if inputted time is out of bounds
-pitchOorErr BYTE "The pitch (in DL) is too high!", 0                            ; tells if user pitch is too high
-invalidRange BYTE "The range you specified is invalid!", 0
+invalidInputMsg BYTE "You have put in an invalid input. Please try again."      ; if user entered something that was wrong
+fileNamePrompt BYTE "Enter the filename: "                                      ; prompts user for file name
+tempoPrompt BYTE "Please enter a tempo range. To set a specific tempo, type it in for both the min and the max."   ; explains prompted input for user
+minTempoPrompt BYTE "Enter the minimum tempo: "                                 ; prompts for min bpm
+maxTempoPrompt BYTE "Enter the maximum tempo: "                                 ; prompts for max bpm
+outTempoPrompt BYTE "The generated tempo is: "                                  ; tells user the limited rng bpm
+measurePrompt BYTE "Please enter a measure range. To set a specific number of measures, type it in for both the min and the max."   ; explains to user what next prompts are for
+minMeasurePrompt BYTE "Enter the minimum number of measures: "                  ; prompts for min wanted measures
+maxMeasurePrompt BYTE "Enter the maximum number of measures: "                  ; prompts for max wanted measuers
+outMeasurePrompt BYTE "The generated number of measures is: "                   ; outputs the limited rng measure generated
+errorMsg BYTE "An error has occured. Terminating."                              ; error message produced if something goes wrong
+segmentNumOobErr BYTE "The segment number (in ESI) is out of bounds!"           ; tells if user segment is out of bounds
+measureNumOobErr BYTE "The message number (in BL) is out of bounds!"            ; tells if user message is out of bounds
+timeOorErr BYTE "The time (in BH) is too high!"                                 ; tells if inputted time is out of bounds
+pitchOorErr BYTE "The pitch (in DL) is too high!"                               ; tells if user pitch is too high
+invalidRange BYTE "The range you specified is invalid!"
+testStr BYTE "test"
+crLfStr BYTE 0dh, 0ah
 
 rootNames BYTE "C", 0, 0, 0,
                "C#", 0, 0,
@@ -89,20 +94,31 @@ sequenceCount db 0
 currentPitch byte 3ch
 currentChord byte 0
 
-rngHandle HANDLE ?
+rngHandle DWORD ?
 
 rngIdentifier WORD 52h, 4eh, 47h, 0
 STD_OUTPUT_HANDLE EQU - 11
+STD_INPUT_HANDLE EQU - 10
+HEAP_ZERO_MEMORY = 00000008h
+NULL = 0
+INVALID_HANDLE_VALUE = -1
+FILE_APPEND_DATA = 4
+CREATE_NEW = 1
+FILE_SHARE_READ = 1
+FILE_ATTRIBUTE_NORMAL = 80h
 
 randomNum BYTE ?
 
 numStr BYTE 8 DUP(0), "h"
+inString BYTE 8 DUP(0), "h"
 
 .data?
-hFile  HANDLE ?                                 ; handle to the file
-hHeap  HANDLE ?                                 ; handle to the heap
+hFile  DWORD ?                                  ; handle to the file
+hHeap  DWORD  ?                                 ; handle to the heap
 consoleOutHandle dd ?
+consoleInHandle dd ?
 bytesWritten dd ?
+bytesRead dd ?
 track1Chunk dword ?
 track2Chunk dword ?
 track3Chunk dword ?
@@ -236,7 +252,7 @@ BCryptOpenAlgorithmProvider PROTO,
     pszImplementation : DWORD,
     dwFlags : DWORD
 
-CreateFileW PROTO, ; create new file
+CreateFileA PROTO, ; create new file
     pFilename : PTR BYTE, ; ptr to filename
     accessMode : DWORD, ; access mode
     shareMode : DWORD, ; share mode
@@ -245,7 +261,16 @@ CreateFileW PROTO, ; create new file
     attributes : DWORD, ; file attributes
     htemplate : DWORD; handle to template file
 
+CloseHandle PROTO,
+    hObject:DWORD
+
+ExitProcess PROTO,
+    uExitCode:DWORD
+
 GetProcessHeap PROTO
+
+GetStdHandle PROTO,
+    nStdHandle:DWORD
 
 HeapAlloc PROTO,
     hHeap:DWORD, ; handle to private heap block
@@ -253,16 +278,41 @@ HeapAlloc PROTO,
     dwBytes : DWORD; number of bytes to allocate
 
 HeapFree PROTO,
-    hHeap:HANDLE, ; handle to heap with memory block
+    hHeap:DWORD, ; handle to heap with memory block
     dwFlags : DWORD, ; heap free options
     lpMem : DWORD; pointer to block to be freed
 
+ReadConsoleA PROTO,
+    hConsoleInput:DWORD,
+    lpBuffer:DWORD,
+    nNumberOfCharsToRead:DWORD,
+    lpNumberOfCharsRead:DWORD,
+    pInputControl:DWORD
+
+SetConsoleCP PROTO,
+    wCodePageID:DWORD
+
+WriteConsoleA PROTO,
+    hConsoleOutput:DWORD,
+    lpBuffer:DWORD,
+    nNumberOfCharsToWrite:DWORD,
+    lpNumberOfCharsWritten:DWORD,
+    lpReserved:DWORD
+
+WriteFile PROTO,
+    hFile:DWORD,
+    lpBuffer:DWORD,
+    nNumberOfBytesToWrite:DWORD,
+    lpNumberOfBytesWritten:DWORD,
+    lpOverlapped:DWORD
+
 ; ------------------------------------------------------------------------------
-ConsoleWriteHex PROC USES EAX ECX,
+ConsoleWriteHex PROC USES EAX ECX EDX,
     num:DWORD
 ; ------------------------------------------------------------------------------
     mov ecx, 7
-    mov eax, num
+    mov edx, num
+    mov eax, edx
 convertLoop:
     and eax, 0fh
     cmp eax, 0ah
@@ -273,15 +323,14 @@ letter:
     add eax, 37h
 store:
     mov numStr[ecx], al
-    mov eax, num
-    shr eax, 4
-    mov num, eax
+    shr edx, 4
+    mov eax, edx
     cmp ecx, 0
     je write
     dec ecx
     jmp convertLoop
 write:
-    invoke WriteConsole, consoleOutHandle, offset numStr, 9, offset bytesWritten, 0
+    invoke WriteConsoleA, consoleOutHandle, offset numStr, 9, offset bytesWritten, 0
     mov ecx, 7
 resetLoop:
     mov numStr[ecx], 0
@@ -296,7 +345,7 @@ ConsoleWriteHex ENDP
 ;-------------------------------------------------------------------------------
 Error PROC
 ;-------------------------------------------------------------------------------
-    invoke WriteConsole, consoleOutHandle, edx, ecx, offset bytesWritten, 0
+    invoke WriteConsoleA, consoleOutHandle, edx, ecx, offset bytesWritten, 0
     invoke ExitProcess, 0
 Error ENDP
 
@@ -311,7 +360,6 @@ noteEvent PROC USES ebx edx,
     mov bh, time
     cmp bh, 80h                                 ; check that the time is valid
     jb continue0                                ; jump if time is valid
-    call DumpRegs                               ; clear registers
     mov edx, OFFSET timeOorErr                  ; pass type of error
     mov ecx, sizeof timeOorErr
     call Error                                  ; call time error if invalid
@@ -319,7 +367,6 @@ continue0:
     mov dl, pitch
     cmp dl, 80h                                 ; check that the pitch is valid
     jb continue1                                ; jump if pitch is valid
-    call DumpRegs                               ; clear registers
     mov edx, OFFSET pitchOorErr                 ; pass type of error
     mov ecx, sizeof pitchOorErr
     call Error                                  ; call pitch error if invalid
@@ -333,10 +380,10 @@ continue1:
     ret
 noteEvent ENDP
 
-;
+;-------------------------------------------------------------------------------
 randRange PROC USES EAX ECX,
     upperBound:BYTE
-;
+;-------------------------------------------------------------------------------
 try:
     invoke BCryptGenRandom, rngHandle, ADDR randomNum, 1, 0
     mov al, randomNum
@@ -345,33 +392,81 @@ try:
     ret
 randRange ENDP
 
+;-------------------------------------------------------------------------------
+hexStrToNum PROC USES EBX ECX EDX,
+    value:DWORD,
+;-------------------------------------------------------------------------------
+    xor eax, eax
+    xor ecx, ecx
+check_hexit:
+    mov edx, value
+    add edx, ecx
+    cmp BYTE PTR [edx], "0"
+    jb finish
+    cmp BYTE PTR[edx], "9"
+    jbe add_digit_to_num
+    cmp BYTE PTR[edx], "f"
+    ja finish
+    cmp BYTE PTR[edx], "a"
+    jae add_lower_hexit_to_num
+    cmp BYTE PTR[edx], "F"
+    ja finish
+    cmp BYTE PTR[edx], "A"
+    jae add_upper_hexit_to_num
+    jmp finish
+add_digit_to_num:
+    shl eax, 4
+    movzx ebx, BYTE PTR[edx]
+    sub ebx, DWORD PTR 30h
+    add eax, ebx
+    inc ecx
+    jmp check_hexit
+add_upper_hexit_to_num:
+    shl eax, 4
+    movzx ebx, BYTE PTR[edx]
+    sub ebx, DWORD PTR 37h
+    add eax, ebx
+    inc ecx
+    jmp check_hexit
+add_lower_hexit_to_num:
+    shl eax, 4
+    movzx ebx, BYTE PTR[edx]
+    sub ebx, DWORD PTR 57h
+    add eax, ebx
+    inc ecx
+    jmp check_hexit
+finish:
+    ret
+hexStrToNum ENDP
+
 main PROC
     ; initialize the randomizer
-    call Randomize
     invoke BCryptOpenAlgorithmProvider, ADDR rngHandle, ADDR rngIdentifier, 0, 0
+
+    invoke SetConsoleCP, 65001
 
     invoke GetProcessHeap
     .if eax == NULL
-        call WriteWindowsMsg
         jmp quit
     .endif
     mov hHeap, eax
 
     INVOKE GetStdHandle, STD_OUTPUT_HANDLE
     mov[consoleOutHandle], eax
+    INVOKE GetStdHandle, STD_INPUT_HANDLE
+    mov[consoleInHandle], eax
     
     ; prompt for the filename and create the file, creating the header chunk
-    invoke WriteConsole, consoleOutHandle, OFFSET fileNamePrompt, sizeof fileNamePrompt, offset bytesWritten, 0
-    mov edx, OFFSET fileName                    ; preps variable for filename
-    mov ecx, 0fbh
-    call ReadString                             ; takes user's input
+    invoke WriteConsoleA, consoleOutHandle, OFFSET fileNamePrompt, sizeof fileNamePrompt, offset bytesWritten, 0
+    INVOKE ReadConsoleA, consoleInHandle, OFFSET fileName, 0fdh, OFFSET bytesRead, NULL
+    mov eax, bytesRead
+    sub eax, 2                                  ; to account for the Cr and Lf chars
     mov fileName[eax], "."                      ; add .mid extension to file name
     mov fileName[eax+1], "m"
     mov fileName[eax+2], "i"
     mov fileName[eax+3], "d"
     INVOKE CreateFileA, ADDR fileName, FILE_APPEND_DATA, FILE_SHARE_READ, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, 0   ;using windows api
     .if EAX == INVALID_HANDLE_VALUE             ; checks for invalid handle
-        call WriteWindowsMsg                    ; prints error
         jmp quit                                ; quits program
     .endif
     mov hFile,eax
@@ -379,16 +474,17 @@ main PROC
     mov edx, OFFSET headerChunk
     invoke WriteFile, eax, edx, ecx, NULL, NULL ; using windows api
     .if EAX == 0
-        call WriteWindowsMsg
         jmp closeAndQuit
     .endif
 
     ; prompt for tempo and display the result to the user
     mov edx, OFFSET tempoPrompt
-    invoke WriteConsole, consoleOutHandle, OFFSET tempoPrompt, sizeof tempoPrompt, offset bytesWritten, 0
-    call crLf
-    invoke WriteConsole, consoleOutHandle, OFFSET minTempoPrompt, sizeof minTempoPrompt, offset bytesWritten, 0
-    call readInt
+    invoke WriteConsoleA, consoleOutHandle, OFFSET tempoPrompt, sizeof tempoPrompt, offset bytesWritten, 0
+    invoke WriteConsoleA, consoleOutHandle, OFFSET crLfStr, 2, offset bytesWritten, 0
+    invoke WriteConsoleA, consoleOutHandle, OFFSET minTempoPrompt, sizeof minTempoPrompt, offset bytesWritten, 0
+    INVOKE ReadConsoleA, consoleInHandle, OFFSET inString, 11, OFFSET bytesRead, NULL
+    INVOKE hexStrToNum, OFFSET inString
+    INVOKE consoleWriteHex, eax
     cmp eax, 0
     jg tempoContinue0
     mov edx, OFFSET invalidRange
@@ -396,8 +492,9 @@ main PROC
     call Error
 tempoContinue0:
     mov minTempo, eax
-    invoke WriteConsole, consoleOutHandle, OFFSET maxTempoPrompt, sizeof maxTempoPrompt, offset bytesWritten, 0
-    call readInt
+    invoke WriteConsoleA, consoleOutHandle, OFFSET maxTempoPrompt, sizeof maxTempoPrompt, offset bytesWritten, 0
+    INVOKE ReadConsoleA, consoleInHandle, OFFSET inString, 11, OFFSET bytesRead, NULL
+    INVOKE hexStrToNum, OFFSET inString
     cmp eax, minTempo
     jae tempoContinue
     mov edx, OFFSET invalidRange
@@ -410,9 +507,9 @@ tempoContinue:
     mov al, randomNum
     add eax, minTempo
     mov tempo, eax
-    invoke WriteConsole, consoleOutHandle, OFFSET outTempoPrompt, sizeof outTempoPrompt, offset bytesWritten, 0
+    invoke WriteConsoleA, consoleOutHandle, OFFSET outTempoPrompt, sizeof outTempoPrompt, offset bytesWritten, 0
     invoke ConsoleWriteHex, tempo
-    call crLf
+    invoke WriteConsoleA, consoleOutHandle, OFFSET crLfStr, 2, offset bytesWritten, 0
 
     ; store the tempo
     mov ebx, tempo
@@ -431,17 +528,16 @@ tempoContinue:
     mov edx, OFFSET track0Chunk
     invoke WriteFile, eax, edx, ecx, NULL, NULL
     .if EAX == 0
-        call WriteWindowsMsg
         jmp closeAndQuit
     .endif
 
 random:
     ; prompt for measures and display the result to the user
-    invoke WriteConsole, consoleOutHandle, OFFSET measurePrompt, sizeof measurePrompt, offset bytesWritten, 0
-    call crLf
-    mov edx, OFFSET minMeasurePrompt
-    invoke WriteConsole, consoleOutHandle, OFFSET minMeasurePrompt, sizeof minMeasurePrompt, offset bytesWritten, 0
-    call readInt
+    invoke WriteConsoleA, consoleOutHandle, OFFSET measurePrompt, sizeof measurePrompt, offset bytesWritten, 0
+    invoke WriteConsoleA, consoleOutHandle, OFFSET crLfStr, 2, offset bytesWritten, 0
+    invoke WriteConsoleA, consoleOutHandle, OFFSET minMeasurePrompt, sizeof minMeasurePrompt, offset bytesWritten, 0
+    INVOKE ReadConsoleA, consoleInHandle, OFFSET inString, 11, OFFSET bytesRead, NULL
+    INVOKE hexStrToNum, OFFSET inString
     cmp eax, 0
     jg randomContinue0
     mov edx, OFFSET invalidRange
@@ -449,9 +545,9 @@ random:
     call Error
 randomContinue0:
     mov minMeasures, eax
-    mov edx, OFFSET maxMeasurePrompt
-    invoke WriteConsole, consoleOutHandle, OFFSET maxMeasurePrompt, sizeof maxMeasurePrompt, offset bytesWritten, 0
-    call readInt
+    invoke WriteConsoleA, consoleOutHandle, OFFSET maxMeasurePrompt, sizeof maxMeasurePrompt, offset bytesWritten, 0
+    INVOKE ReadConsoleA, consoleInHandle, OFFSET inString, 11, OFFSET bytesRead, NULL
+    INVOKE hexStrToNum, OFFSET inString
     cmp eax, minMeasures
     jae randomContinue1
     mov edx, OFFSET invalidRange
@@ -463,13 +559,13 @@ randomContinue1:
     mov al, randomNum
     add eax, minMeasures
     mov measureCount, eax
-    invoke WriteConsole, consoleOutHandle, OFFSET outMeasurePrompt, sizeof outMeasurePrompt, offset bytesWritten, 0
-    mov eax, measureCount
+    invoke WriteConsoleA, consoleOutHandle, OFFSET outMeasurePrompt, sizeof outMeasurePrompt, offset bytesWritten, 0
     invoke ConsoleWriteHex, measureCount
-    call crLf
+    invoke WriteConsoleA, consoleOutHandle, OFFSET crLfStr, 2, offset bytesWritten, 0
     jmp trackPrep
 
 trackPrep:
+    mov eax, measureCount
     mov ebx, 33
     xor edx, edx
     mul ebx
@@ -491,7 +587,6 @@ trackPrep:
     ; allocate memory for track 1
     invoke HeapAlloc, hHeap, HEAP_ZERO_MEMORY, track1ChunkLen
     .if eax == NULL
-        call WriteWindowsMsg
         jmp closeAndQuit
     .endif
     mov track1Chunk, eax
@@ -521,10 +616,6 @@ trackPrep:
 
     ; allocate memory for track 2
     invoke HeapAlloc, hHeap, HEAP_ZERO_MEMORY, track2ChunkLen
-    .if eax == NULL
-        call WriteWindowsMsg
-        jmp closeAndQuit
-    .endif
     mov track2Chunk, eax
 
     ; set meta info for track 2
@@ -553,7 +644,6 @@ trackPrep:
     ; allocate memory for track 3
     invoke HeapAlloc, hHeap, HEAP_ZERO_MEMORY, track3ChunkLen
     .if eax == NULL
-        call WriteWindowsMsg
         jmp closeAndQuit
     .endif
     mov track3Chunk, eax
@@ -1023,14 +1113,14 @@ notesContinue:
     shl edx, 2
     add edx, OFFSET rootNames
     push ecx
-    invoke WriteConsole, consoleOutHandle, edx, 2, offset bytesWritten, 0
+    invoke WriteConsoleA, consoleOutHandle, edx, 2, offset bytesWritten, 0
     xor edx, edx
     mov dl, currentChord
     shl edx, 1
     add edx, OFFSET chordNames
-    invoke WriteConsole, consoleOutHandle, edx, 5, offset bytesWritten, 0
+    invoke WriteConsoleA, consoleOutHandle, edx, 5, offset bytesWritten, 0
+    invoke WriteConsoleA, consoleOutHandle, OFFSET crLfStr, 2, offset bytesWritten, 0
     pop ecx
-    call CrLf
 
     xor edx, edx
 
@@ -1395,7 +1485,6 @@ write:
     mov edx, track1Chunk
     invoke WriteFile, eax, edx, ecx, NULL, NULL
     .if EAX == 0
-        call WriteWindowsMsg
         jmp closeAndQuit
    .endif
     invoke HeapFree, hHeap, 0, track1Chunk
@@ -1406,7 +1495,6 @@ write:
     mov edx, track2Chunk
     invoke WriteFile, eax, edx, ecx, NULL, NULL
     .if EAX == 0
-        call WriteWindowsMsg
         jmp closeAndQuit
     .endif
     invoke HeapFree, hHeap, 0, track2Chunk
@@ -1435,7 +1523,6 @@ write:
     mov edx, track3Chunk
     invoke WriteFile, eax, edx, ecx, NULL, NULL
     .if EAX == 0
-        call WriteWindowsMsg
         jmp closeAndQuit
     .endif
     invoke HeapFree, hHeap, 0, track3Chunk
