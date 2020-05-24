@@ -1,8 +1,7 @@
 .686P; Pentium Pro or later
 .MODEL flat, stdcall
 .STACK 4096
-includelib Bcrypt.lib
-includelib Kernel32.dll
+includelib Kernel32.lib
 .data
 
 fileName BYTE 0ffh DUP(0)
@@ -94,9 +93,6 @@ sequenceCount db 0
 currentPitch byte 3ch
 currentChord byte 0
 
-rngHandle DWORD ?
-
-rngIdentifier WORD 52h, 4eh, 47h, 0
 STD_OUTPUT_HANDLE EQU - 11
 STD_INPUT_HANDLE EQU - 10
 HEAP_ZERO_MEMORY = 00000008h
@@ -106,9 +102,6 @@ FILE_APPEND_DATA = 4
 CREATE_NEW = 1
 FILE_SHARE_READ = 1
 FILE_ATTRIBUTE_NORMAL = 80h
-
-randomNum BYTE ?
-
 numStr BYTE 8 DUP(0), "h"
 inString BYTE 8 DUP(0), "h"
 
@@ -240,18 +233,6 @@ drum3C PROTO
 drum3D PROTO
 drum3E PROTO
 
-BCryptGenRandom PROTO,
-    hAlgorithm : PTR DWORD,
-    pbBuffer : PTR BYTE,
-    cbBuffer : DWORD,
-    dwFlags : DWORD,
-
-BCryptOpenAlgorithmProvider PROTO,
-    phAlgorithm:PTR DWORD,
-    pszAlgId : PTR BYTE,
-    pszImplementation : DWORD,
-    dwFlags : DWORD
-
 CreateFileA PROTO, ; create new file
     pFilename : PTR BYTE, ; ptr to filename
     accessMode : DWORD, ; access mode
@@ -289,6 +270,11 @@ ReadConsoleA PROTO,
     lpNumberOfCharsRead:DWORD,
     pInputControl:DWORD
 
+randInit PROTO
+
+randRange PROTO,
+    :BYTE
+
 SetConsoleCP PROTO,
     wCodePageID:DWORD
 
@@ -305,6 +291,7 @@ WriteFile PROTO,
     nNumberOfBytesToWrite:DWORD,
     lpNumberOfBytesWritten:DWORD,
     lpOverlapped:DWORD
+
 
 ; ------------------------------------------------------------------------------
 ConsoleWriteHex PROC USES EAX ECX EDX,
@@ -381,18 +368,6 @@ continue1:
 noteEvent ENDP
 
 ;-------------------------------------------------------------------------------
-randRange PROC USES EAX ECX,
-    upperBound:BYTE
-;-------------------------------------------------------------------------------
-try:
-    invoke BCryptGenRandom, rngHandle, ADDR randomNum, 1, 0
-    mov al, randomNum
-    cmp al, upperBound
-    ja try
-    ret
-randRange ENDP
-
-;-------------------------------------------------------------------------------
 hexStrToNum PROC USES EBX ECX EDX,
     value:DWORD,
 ;-------------------------------------------------------------------------------
@@ -441,7 +416,7 @@ hexStrToNum ENDP
 
 main PROC
     ; initialize the randomizer
-    invoke BCryptOpenAlgorithmProvider, ADDR rngHandle, ADDR rngIdentifier, 0, 0
+    call randInit
 
     invoke SetConsoleCP, 65001
 
@@ -504,7 +479,6 @@ tempoContinue:
     sub eax, minTempo
     add eax, 1
     invoke randRange, al
-    mov al, randomNum
     add eax, minTempo
     mov tempo, eax
     invoke WriteConsoleA, consoleOutHandle, OFFSET outTempoPrompt, sizeof outTempoPrompt, offset bytesWritten, 0
@@ -556,7 +530,6 @@ randomContinue0:
 randomContinue1:
     sub eax, minMeasures
     invoke randRange, al
-    mov al, randomNum
     add eax, minMeasures
     mov measureCount, eax
     invoke WriteConsoleA, consoleOutHandle, OFFSET outMeasurePrompt, sizeof outMeasurePrompt, offset bytesWritten, 0
@@ -674,7 +647,6 @@ notes:
     je write
     mov eax, 3eh
     invoke randRange, al
-    mov al, randomNum
     ; root of the decision tree
     cmp eax, 1fh
     jb below1F
@@ -1085,7 +1057,6 @@ drumCall3E:
 notesContinue:
     mov eax, 11
     invoke randRange, al
-    mov al, randomNum
     add eax, cPitch
     mov currentPitch, al
     mov eax, ecx
@@ -1098,7 +1069,6 @@ notesContinue:
     xor edx, edx
     mov eax, 14
     invoke randRange, al
-    mov al, randomNum
     mov ebx, 3
     mul ebx
     mov currentChord, al
@@ -1179,7 +1149,6 @@ notesContinue:
     add esi, eax
     mov eax, 2
     invoke randRange, al
-    mov al, randomNum
     cmp eax, 1
     jb guitarPattern0
     je guitarPattern1
@@ -3895,6 +3864,5 @@ drumLoop:
 endLoop:
     ret
 drum ENDP
-
-
+PUBLIC main
 END main
