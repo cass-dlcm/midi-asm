@@ -1,29 +1,40 @@
-.686P; Pentium Pro or later
+.686P
 .MODEL flat, stdcall
 .STACK 4096
 includelib Kernel32.lib
-.data
+.data 
+extern fileNamePrompt:BYTE
+extern fileNamePromptLen:DWORD
+extern tempoPrompt:BYTE
+extern tempoPromptLen:DWORD
+extern minTempoPrompt:BYTE
+extern minTempoPromptLen:DWORD
+extern maxTempoPrompt:BYTE
+extern maxTempoPromptLen:DWORD
+extern outTempoPrompt:BYTE
+extern outTempoPromptLen:DWORD
+extern measurePrompt:BYTE
+extern measurePromptLen:DWORD
+extern minMeasurePrompt:BYTE
+extern minMeasurePromptLen:DWORD
+extern maxMeasurePrompt:BYTE
+extern maxMeasurePromptLen:DWORD
+extern outMeasurePrompt:BYTE
+extern outMeasurePromptLen:DWORD
+extern errorMsg:BYTE
+extern segmentNumOobErr:BYTE
+extern measureNumOobErr:BYTE
+extern timeOorErr:BYTE
+extern pitchOorErr:BYTE
+extern invalidRange:BYTE
+extern testStr:BYTE
+extern crLfStr:BYTE
+extern consoleOutHandle:DWORD
+extern consoleInHandle:DWORD
+extern bytesRead:DWORD
+extern numStr:BYTE
 
 fileName BYTE 0ffh DUP(0)
-
-invalidInputMsg BYTE "You have put in an invalid input. Please try again."      ; if user entered something that was wrong
-fileNamePrompt BYTE "Enter the filename: "                                      ; prompts user for file name
-tempoPrompt BYTE "Please enter a tempo range. To set a specific tempo, type it in for both the min and the max."   ; explains prompted input for user
-minTempoPrompt BYTE "Enter the minimum tempo: "                                 ; prompts for min bpm
-maxTempoPrompt BYTE "Enter the maximum tempo: "                                 ; prompts for max bpm
-outTempoPrompt BYTE "The generated tempo is: "                                  ; tells user the limited rng bpm
-measurePrompt BYTE "Please enter a measure range. To set a specific number of measures, type it in for both the min and the max."   ; explains to user what next prompts are for
-minMeasurePrompt BYTE "Enter the minimum number of measures: "                  ; prompts for min wanted measures
-maxMeasurePrompt BYTE "Enter the maximum number of measures: "                  ; prompts for max wanted measuers
-outMeasurePrompt BYTE "The generated number of measures is: "                   ; outputs the limited rng measure generated
-errorMsg BYTE "An error has occured. Terminating."                              ; error message produced if something goes wrong
-segmentNumOobErr BYTE "The segment number (in ESI) is out of bounds!"           ; tells if user segment is out of bounds
-measureNumOobErr BYTE "The message number (in BL) is out of bounds!"            ; tells if user message is out of bounds
-timeOorErr BYTE "The time (in BH) is too high!"                                 ; tells if inputted time is out of bounds
-pitchOorErr BYTE "The pitch (in DL) is too high!"                               ; tells if user pitch is too high
-invalidRange BYTE "The range you specified is invalid!"
-testStr BYTE "test"
-crLfStr BYTE 0dh, 0ah
 
 rootNames BYTE "C", 0, 0, 0,
                "C#", 0, 0,
@@ -93,8 +104,6 @@ sequenceCount db 0
 currentPitch byte 3ch
 currentChord byte 0
 
-STD_OUTPUT_HANDLE EQU - 11
-STD_INPUT_HANDLE EQU - 10
 HEAP_ZERO_MEMORY = 00000008h
 NULL = 0
 INVALID_HANDLE_VALUE = -1
@@ -102,16 +111,12 @@ FILE_APPEND_DATA = 4
 CREATE_NEW = 1
 FILE_SHARE_READ = 1
 FILE_ATTRIBUTE_NORMAL = 80h
-numStr BYTE 8 DUP(0), "h"
 inString BYTE 8 DUP(0), "h"
 
 .data?
 hFile  DWORD ?                                  ; handle to the file
 hHeap  DWORD  ?                                 ; handle to the heap
-consoleOutHandle dd ?
-consoleInHandle dd ?
 bytesWritten dd ?
-bytesRead dd ?
 track1Chunk dword ?
 track2Chunk dword ?
 track3Chunk dword ?
@@ -245,6 +250,9 @@ CreateFileA PROTO, ; create new file
 CloseHandle PROTO,
     hObject:DWORD
 
+ConsoleWriteHex PROTO,
+    num:DWORD
+
 ExitProcess PROTO,
     uExitCode:DWORD
 
@@ -263,12 +271,14 @@ HeapFree PROTO,
     dwFlags : DWORD, ; heap free options
     lpMem : DWORD; pointer to block to be freed
 
-ReadConsoleA PROTO,
-    hConsoleInput:DWORD,
-    lpBuffer:DWORD,
-    nNumberOfCharsToRead:DWORD,
-    lpNumberOfCharsRead:DWORD,
-    pInputControl:DWORD
+hexStrToNum PROTO,
+    value:DWORD
+
+initIO PROTO
+
+readConsole PROTO,
+    readLoc:DWORD,
+    readAmount:DWORD
 
 randInit PROTO
 
@@ -278,12 +288,9 @@ randRange PROTO,
 SetConsoleCP PROTO,
     wCodePageID:DWORD
 
-WriteConsoleA PROTO,
-    hConsoleOutput:DWORD,
-    lpBuffer:DWORD,
-    nNumberOfCharsToWrite:DWORD,
-    lpNumberOfCharsWritten:DWORD,
-    lpReserved:DWORD
+writeConsole PROTO,
+    prompt:DWORD,
+    promptSize:DWORD
 
 WriteFile PROTO,
     hFile:DWORD,
@@ -292,48 +299,12 @@ WriteFile PROTO,
     lpNumberOfBytesWritten:DWORD,
     lpOverlapped:DWORD
 
-
-; ------------------------------------------------------------------------------
-ConsoleWriteHex PROC USES EAX ECX EDX,
-    num:DWORD
-; ------------------------------------------------------------------------------
-    mov ecx, 7
-    mov edx, num
-    mov eax, edx
-convertLoop:
-    and eax, 0fh
-    cmp eax, 0ah
-    jae letter
-    add eax, 30h
-    jmp store
-letter:
-    add eax, 37h
-store:
-    mov numStr[ecx], al
-    shr edx, 4
-    mov eax, edx
-    cmp ecx, 0
-    je write
-    dec ecx
-    jmp convertLoop
-write:
-    invoke WriteConsoleA, consoleOutHandle, offset numStr, 9, offset bytesWritten, 0
-    mov ecx, 7
-resetLoop:
-    mov numStr[ecx], 0
-    cmp ecx, 0
-    je done
-    dec ecx
-    jmp resetLoop
-done:
-    ret
-ConsoleWriteHex ENDP
-
-;-------------------------------------------------------------------------------
+; ------------------------------------------------------------------------------ -
 Error PROC
-;-------------------------------------------------------------------------------
-    invoke WriteConsoleA, consoleOutHandle, edx, ecx, offset bytesWritten, 0
+; ------------------------------------------------------------------------------ -
+    invoke writeConsole, edx, ecx
     invoke ExitProcess, 0
+    ret
 Error ENDP
 
 ;-------------------------------------------------------------------------------
@@ -367,53 +338,6 @@ continue1:
     ret
 noteEvent ENDP
 
-;-------------------------------------------------------------------------------
-hexStrToNum PROC USES EBX ECX EDX,
-    value:DWORD,
-;-------------------------------------------------------------------------------
-    xor eax, eax
-    xor ecx, ecx
-check_hexit:
-    mov edx, value
-    add edx, ecx
-    cmp BYTE PTR [edx], "0"
-    jb finish
-    cmp BYTE PTR[edx], "9"
-    jbe add_digit_to_num
-    cmp BYTE PTR[edx], "f"
-    ja finish
-    cmp BYTE PTR[edx], "a"
-    jae add_lower_hexit_to_num
-    cmp BYTE PTR[edx], "F"
-    ja finish
-    cmp BYTE PTR[edx], "A"
-    jae add_upper_hexit_to_num
-    jmp finish
-add_digit_to_num:
-    shl eax, 4
-    movzx ebx, BYTE PTR[edx]
-    sub ebx, DWORD PTR 30h
-    add eax, ebx
-    inc ecx
-    jmp check_hexit
-add_upper_hexit_to_num:
-    shl eax, 4
-    movzx ebx, BYTE PTR[edx]
-    sub ebx, DWORD PTR 37h
-    add eax, ebx
-    inc ecx
-    jmp check_hexit
-add_lower_hexit_to_num:
-    shl eax, 4
-    movzx ebx, BYTE PTR[edx]
-    sub ebx, DWORD PTR 57h
-    add eax, ebx
-    inc ecx
-    jmp check_hexit
-finish:
-    ret
-hexStrToNum ENDP
-
 main PROC
     ; initialize the randomizer
     call randInit
@@ -426,14 +350,11 @@ main PROC
     .endif
     mov hHeap, eax
 
-    INVOKE GetStdHandle, STD_OUTPUT_HANDLE
-    mov[consoleOutHandle], eax
-    INVOKE GetStdHandle, STD_INPUT_HANDLE
-    mov[consoleInHandle], eax
+    call initIO
     
     ; prompt for the filename and create the file, creating the header chunk
-    invoke WriteConsoleA, consoleOutHandle, OFFSET fileNamePrompt, sizeof fileNamePrompt, offset bytesWritten, 0
-    INVOKE ReadConsoleA, consoleInHandle, OFFSET fileName, 0fdh, OFFSET bytesRead, NULL
+    invoke writeConsole, offset fileNamePrompt, fileNamePromptLen
+    invoke readConsole, offset fileName, 0fdh
     mov eax, bytesRead
     sub eax, 2                                  ; to account for the Cr and Lf chars
     mov fileName[eax], "."                      ; add .mid extension to file name
@@ -454,12 +375,12 @@ main PROC
 
     ; prompt for tempo and display the result to the user
     mov edx, OFFSET tempoPrompt
-    invoke WriteConsoleA, consoleOutHandle, OFFSET tempoPrompt, sizeof tempoPrompt, offset bytesWritten, 0
-    invoke WriteConsoleA, consoleOutHandle, OFFSET crLfStr, 2, offset bytesWritten, 0
-    invoke WriteConsoleA, consoleOutHandle, OFFSET minTempoPrompt, sizeof minTempoPrompt, offset bytesWritten, 0
-    INVOKE ReadConsoleA, consoleInHandle, OFFSET inString, 11, OFFSET bytesRead, NULL
+    invoke writeConsole, offset tempoPrompt, tempoPromptLen
+    invoke writeConsole, offset crLfStr, 2
+    invoke writeConsole, offset minTempoPrompt, minTempoPromptLen
+    invoke readConsole, offset inString, 11
     INVOKE hexStrToNum, OFFSET inString
-    INVOKE consoleWriteHex, eax
+    ;INVOKE consoleWriteHex, eax
     cmp eax, 0
     jg tempoContinue0
     mov edx, OFFSET invalidRange
@@ -467,9 +388,9 @@ main PROC
     call Error
 tempoContinue0:
     mov minTempo, eax
-    invoke WriteConsoleA, consoleOutHandle, OFFSET maxTempoPrompt, sizeof maxTempoPrompt, offset bytesWritten, 0
-    INVOKE ReadConsoleA, consoleInHandle, OFFSET inString, 11, OFFSET bytesRead, NULL
-    INVOKE hexStrToNum, OFFSET inString
+    invoke writeConsole, offset maxTempoPrompt, maxTempoPromptLen
+    invoke readConsole, offset inString, 11
+    invoke hexStrToNum, offset inString
     cmp eax, minTempo
     jae tempoContinue
     mov edx, OFFSET invalidRange
@@ -481,9 +402,9 @@ tempoContinue:
     invoke randRange, al
     add eax, minTempo
     mov tempo, eax
-    invoke WriteConsoleA, consoleOutHandle, OFFSET outTempoPrompt, sizeof outTempoPrompt, offset bytesWritten, 0
+    invoke writeConsole, offset outTempoPrompt, outTempoPromptLen
     invoke ConsoleWriteHex, tempo
-    invoke WriteConsoleA, consoleOutHandle, OFFSET crLfStr, 2, offset bytesWritten, 0
+    invoke writeConsole, offset crLfStr, 2
 
     ; store the tempo
     mov ebx, tempo
@@ -507,11 +428,11 @@ tempoContinue:
 
 random:
     ; prompt for measures and display the result to the user
-    invoke WriteConsoleA, consoleOutHandle, OFFSET measurePrompt, sizeof measurePrompt, offset bytesWritten, 0
-    invoke WriteConsoleA, consoleOutHandle, OFFSET crLfStr, 2, offset bytesWritten, 0
-    invoke WriteConsoleA, consoleOutHandle, OFFSET minMeasurePrompt, sizeof minMeasurePrompt, offset bytesWritten, 0
-    INVOKE ReadConsoleA, consoleInHandle, OFFSET inString, 11, OFFSET bytesRead, NULL
-    INVOKE hexStrToNum, OFFSET inString
+    invoke writeConsole, offset measurePrompt, measurePromptLen
+    invoke writeConsole, offset crLfStr, 2
+    invoke writeConsole, offset minMeasurePrompt, minMeasurePromptLen
+    invoke readConsole, offset inString, 11
+    invoke hexStrToNum, offset inString
     cmp eax, 0
     jg randomContinue0
     mov edx, OFFSET invalidRange
@@ -519,9 +440,9 @@ random:
     call Error
 randomContinue0:
     mov minMeasures, eax
-    invoke WriteConsoleA, consoleOutHandle, OFFSET maxMeasurePrompt, sizeof maxMeasurePrompt, offset bytesWritten, 0
-    INVOKE ReadConsoleA, consoleInHandle, OFFSET inString, 11, OFFSET bytesRead, NULL
-    INVOKE hexStrToNum, OFFSET inString
+    invoke writeConsole, offset maxMeasurePrompt, maxMeasurePromptLen
+    invoke readConsole, offset inString, 11
+    invoke hexStrToNum, offset inString
     cmp eax, minMeasures
     jae randomContinue1
     mov edx, OFFSET invalidRange
@@ -532,9 +453,9 @@ randomContinue1:
     invoke randRange, al
     add eax, minMeasures
     mov measureCount, eax
-    invoke WriteConsoleA, consoleOutHandle, OFFSET outMeasurePrompt, sizeof outMeasurePrompt, offset bytesWritten, 0
+    invoke writeConsole, offset outMeasurePrompt, outMeasurePromptLen
     invoke ConsoleWriteHex, measureCount
-    invoke WriteConsoleA, consoleOutHandle, OFFSET crLfStr, 2, offset bytesWritten, 0
+    invoke writeConsole, offset crLfStr, 2
     jmp trackPrep
 
 trackPrep:
@@ -1083,13 +1004,13 @@ notesContinue:
     shl edx, 2
     add edx, OFFSET rootNames
     push ecx
-    invoke WriteConsoleA, consoleOutHandle, edx, 2, offset bytesWritten, 0
+    invoke writeConsole, edx, 2
     xor edx, edx
     mov dl, currentChord
     shl edx, 1
     add edx, OFFSET chordNames
-    invoke WriteConsoleA, consoleOutHandle, edx, 5, offset bytesWritten, 0
-    invoke WriteConsoleA, consoleOutHandle, OFFSET crLfStr, 2, offset bytesWritten, 0
+    invoke writeConsole, edx, 5
+    invoke writeConsole, offset crLfStr, 2
     pop ecx
 
     xor edx, edx
