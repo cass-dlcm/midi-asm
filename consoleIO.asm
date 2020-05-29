@@ -82,6 +82,9 @@ ReadConsoleA PROTO,
 	lpNumberOfCharsRead : DWORD,
 	pInputControl : DWORD
 
+SetConsoleCP PROTO,
+	wCodePageID:DWORD
+
 WriteConsoleA PROTO,
 	hConsoleOutput:DWORD,
 	lpBuffer : DWORD,
@@ -172,13 +175,14 @@ finish:
 	ret
 hexStrToNum ENDP
 
-initIO PROC
-	INVOKE GetStdHandle, STD_OUTPUT_HANDLE
+initIO proc uses eax
+	invoke SetConsoleCP, 65001
+	invoke GetStdHandle, STD_OUTPUT_HANDLE
 	mov[consoleOutHandle], eax
-	INVOKE GetStdHandle, STD_INPUT_HANDLE
+	invoke GetStdHandle, STD_INPUT_HANDLE
 	mov[consoleInHandle], eax
 	ret
-initIO ENDP
+initIO endp
 
 readConsole PROC,
 	readLoc:DWORD,
