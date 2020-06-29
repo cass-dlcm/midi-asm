@@ -27,6 +27,122 @@ highMidTomOff proto,
     time : byte
 highMidTomOn proto
 
+drum0 PROTO
+drum1 PROTO
+drum2 PROTO
+
+drum3 PROTO
+
+drum4 PROTO
+drum5 PROTO
+drum6 PROTO
+
+
+drum7 PROTO
+
+
+drum8 PROTO
+drum9 PROTO
+drumA PROTO
+
+drumB PROTO
+
+drumC PROTO
+drumD PROTO
+drumE PROTO
+
+
+
+drumF PROTO
+
+
+
+drum10 PROTO
+drum11 PROTO
+drum12 PROTO
+
+drum13 PROTO
+
+drum14 PROTO
+drum15 PROTO
+drum16 PROTO
+
+
+drum17 PROTO
+
+
+drum18 PROTO
+drum19 PROTO
+drum1A PROTO
+
+drum1B PROTO
+
+drum1C PROTO
+drum1D PROTO
+drum1E PROTO
+
+
+
+
+drum1F PROTO
+
+
+
+
+drum20 PROTO
+drum21 PROTO
+drum22 PROTO
+
+drum23 PROTO
+
+drum24 PROTO
+drum25 PROTO
+drum26 PROTO
+
+
+drum27 PROTO
+
+
+drum28 PROTO
+drum29 PROTO
+drum2A PROTO
+
+drum2B PROTO
+
+drum2C PROTO
+drum2D PROTO
+drum2E PROTO
+
+
+
+drum2F PROTO
+
+
+
+drum30 PROTO
+drum31 PROTO
+drum32 PROTO
+
+drum33 PROTO
+
+drum34 PROTO
+drum35 PROTO
+drum36 PROTO
+
+
+drum37 PROTO
+
+
+drum38 PROTO
+drum39 PROTO
+drum3A PROTO
+
+drum3B PROTO
+
+drum3C PROTO
+drum3D PROTO
+drum3E PROTO
+
 drumChoose proc uses eax
 mov eax, 3eh
 invoke randRange, al

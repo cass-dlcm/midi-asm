@@ -18,68 +18,68 @@ extern measurePromptLen:DWORD
 extern minMeasurePrompt:BYTE
 extern minMeasurePromptLen:DWORD
 extern maxMeasurePrompt:BYTE
-extern maxMeasurePromptLen:DWORD
-extern outMeasurePrompt:BYTE
-extern outMeasurePromptLen:DWORD
-extern errorMsg:BYTE
-extern invalidRange:BYTE
-extern testStr:BYTE
-extern crLfStr:BYTE
-extern consoleOutHandle:DWORD
-extern consoleInHandle:DWORD
-extern bytesRead:DWORD
-extern numStr:BYTE
-extern drumOffset:DWORD
+extern maxMeasurePromptLen : DWORD
+extern outMeasurePrompt : BYTE
+extern outMeasurePromptLen : DWORD
+extern errorMsg : BYTE
+extern invalidRange : BYTE
+extern testStr : BYTE
+extern crLfStr : BYTE
+extern consoleOutHandle : DWORD
+extern consoleInHandle : DWORD
+extern bytesRead : DWORD
+extern numStr : BYTE
+extern drumOffset : DWORD
 
-externdef track3Chunk:dword
+externdef track3Chunk : dword
 
 fileName BYTE 0ffh DUP(0)
 
 rootNames BYTE "C", 0, 0, 0,
-               "C#", 0, 0,
-               "D", 0, 0, 0,
-               "D#", 0, 0,
-               "E", 0, 0, 0,
-               "F", 0, 0, 0,
-               "F#", 0, 0,
-               "G", 0, 0, 0,
-               "G#", 0, 0,
-               "A", 0, 0, 0,
-               "A#", 0, 0,
-               "B", 0
+"C#", 0, 0,
+"D", 0, 0, 0,
+"D#", 0, 0,
+"E", 0, 0, 0,
+"F", 0, 0, 0,
+"F#", 0, 0,
+"G", 0, 0, 0,
+"G#", 0, 0,
+"A", 0, 0, 0,
+"A#", 0, 0,
+"B", 0
 
-chordNames BYTE "M", 5 DUP (0), "m", 5 DUP (0),
-                "5", 5 DUP (0), "7", 5 DUP (0),
-                "M7", 4 DUP (0), "m7", 4 DUP (0), "mM7", 0, 0, 0
-chordNames2 BYTE "6", 5 DUP (0), "m6", 4 DUP (0),
-                 "add9", 0, 0, "madd9", 0,
-                 "7b5", 0, 0, 0, "7#5", 0, 0, 0,
-                 "m7b5", 0, 0, "m7#5", 0
+chordNames BYTE "M", 5 DUP(0), "m", 5 DUP(0),
+"5", 5 DUP(0), "7", 5 DUP(0),
+"M7", 4 DUP(0), "m7", 4 DUP(0), "mM7", 0, 0, 0
+chordNames2 BYTE "6", 5 DUP(0), "m6", 4 DUP(0),
+"add9", 0, 0, "madd9", 0,
+"7b5", 0, 0, 0, "7#5", 0, 0, 0,
+"m7b5", 0, 0, "m7#5", 0
 
-chordVals BYTE 4, 7, 12, 3, 7, 12,              ; M & m
-               7, 12, 19, 4, 7, 10,             ; 5 & 7
-               4, 7, 11, 3, 7, 10, 3, 7, 11,    ; M7, m7, & mM7
-               4, 7, 9, 3, 7, 9,                ; 6 & m6
-               2, 4, 7, 2, 3, 7,                ; add9 & madd9
-               4, 6, 10, 4, 8, 10,              ; 7b5 & 7#5
-               3, 6, 10, 3, 8, 10               ; m7b5 & m7#5
+chordVals BYTE 4, 7, 12, 3, 7, 12, ; M& m
+7, 12, 19, 4, 7, 10, ; 5 & 7
+4, 7, 11, 3, 7, 10, 3, 7, 11, ; M7, m7, & mM7
+4, 7, 9, 3, 7, 9, ; 6 & m6
+2, 4, 7, 2, 3, 7, ; add9& madd9
+4, 6, 10, 4, 8, 10, ; 7b5 & 7#5
+3, 6, 10, 3, 8, 10; m7b5& m7#5
 
 ; header
-headerChunk db "MThd",                          ; file identifier
-               0, 0, 0, 6,                      ; length of remaining header chunk
-               0, 1,                            ; midi format
-               0, 4,                            ; number of tracks
-               0, 60h                           ; number of divisions in a quarter note
-headerChunkLen equ $-headerChunk                ; length of the header
+headerChunk db "MThd", ; file identifier
+0, 0, 0, 6, ; length of remaining header chunk
+0, 1, ; midi format
+0, 4, ; number of tracks
+0, 60h; number of divisions in a quarter note
+headerChunkLen equ $ - headerChunk; length of the header
 
 ; meta track
-track0Chunk db 4dh, 54h, 72h, 6bh,              ; track identifier
-               0, 0, 0, 25,                     ; length of remainig track data
-               0, 0FFh, 51h, 3, 0, 0, 0,        ; tempo of song
-               0, 0FFh, 58h, 4, 4, 2, 18h, 8,   ; time signature of song
-               0, 0FFh, 59h, 2, 0, 0,           ; key signature of song
-               00h, 0FFh, 2Fh, 0                ; end of track
-track0ChunkLen equ $-track0Chunk                ; length of the entire track
+track0Chunk db 4dh, 54h, 72h, 6bh, ; track identifier
+0, 0, 0, 25, ; length of remainig track data
+0, 0FFh, 51h, 3, 0, 0, 0, ; tempo of song
+0, 0FFh, 58h, 4, 4, 2, 18h, 8, ; time signature of song
+0, 0FFh, 59h, 2, 0, 0, ; key signature of song
+00h, 0FFh, 2Fh, 0; end of track
+track0ChunkLen equ $ - track0Chunk; length of the entire track
 minTempo dword 0
 tempo dword 0
 
@@ -92,10 +92,10 @@ track2ChunkLen dword 100fh
 ; drum track
 track3ChunkLen dword 100fh
 
-cPitch dword 3Ch                                ; middle c in midi
+cPitch dword 3Ch; middle c in midi
 
-minMeasures dword 0                             ; minimum number of measrues to generate
-measureCount dword 0                            ; variable of measures to generate
+minMeasures dword 0; minimum number of measrues to generate
+measureCount dword 0; variable of measures to generate
 
 sequenceCount db 0
 
@@ -105,194 +105,67 @@ currentChord byte 0
 HEAP_ZERO_MEMORY = 00000008h
 NULL = 0
 INVALID_HANDLE_VALUE = -1
-FILE_APPEND_DATA = 4
-CREATE_NEW = 1
-FILE_SHARE_READ = 1
-FILE_ATTRIBUTE_NORMAL = 80h
+
 inString BYTE 8 DUP(0), "h"
 
-.data?
-hFile  DWORD ?                                  ; handle to the file
-hHeap  DWORD  ?                                 ; handle to the heap
+hFile  DWORD ? ; handle to the file
+hHeap  DWORD ? ; handle to the heap
 bytesWritten dd ?
 track1Chunk dword ?
 track2Chunk dword ?
 track3Chunk dword ?
 .code
 
-drum0 PROTO
-drum1 PROTO
-drum2 PROTO
-
-drum3 PROTO
-
-drum4 PROTO
-drum5 PROTO
-drum6 PROTO
-
-
-drum7 PROTO
-
-
-drum8 PROTO
-drum9 PROTO
-drumA PROTO
-
-drumB PROTO
-
-drumC PROTO
-drumD PROTO
-drumE PROTO
-
-
-
-drumF PROTO
-
-
-
-drum10 PROTO
-drum11 PROTO
-drum12 PROTO
-
-drum13 PROTO
-
-drum14 PROTO
-drum15 PROTO
-drum16 PROTO
-
-
-drum17 PROTO
-
-
-drum18 PROTO
-drum19 PROTO
-drum1A PROTO
-
-drum1B PROTO
-
-drum1C PROTO
-drum1D PROTO
-drum1E PROTO
-
-
-
-
-drum1F PROTO
-
-
-
-
-drum20 PROTO
-drum21 PROTO
-drum22 PROTO
-
-drum23 PROTO
-
-drum24 PROTO
-drum25 PROTO
-drum26 PROTO
-
-
-drum27 PROTO
-
-
-drum28 PROTO
-drum29 PROTO
-drum2A PROTO
-
-drum2B PROTO
-
-drum2C PROTO
-drum2D PROTO
-drum2E PROTO
-
-
-
-drum2F PROTO
-
-
-
-drum30 PROTO
-drum31 PROTO
-drum32 PROTO
-
-drum33 PROTO
-
-drum34 PROTO
-drum35 PROTO
-drum36 PROTO
-
-
-drum37 PROTO
-
-
-drum38 PROTO
-drum39 PROTO
-drum3A PROTO
-
-drum3B PROTO
-
-drum3C PROTO
-drum3D PROTO
-drum3E PROTO
-
-CreateFileA PROTO, ; create new file
-pFilename : PTR BYTE, ; ptr to filename
-accessMode : DWORD, ; access mode
-shareMode : DWORD, ; share mode
-lpSecurity : DWORD, ; can be NULL
-howToCreate : DWORD, ; how to create the file
-attributes : DWORD, ; file attributes
-htemplate : DWORD; handle to template file
-
+; windows procedures
 CloseHandle PROTO,
-hObject:DWORD
-
-ConsoleWriteHex PROTO,
-num : DWORD
+    hObject:DWORD
 
 ExitProcess PROTO,
-uExitCode : DWORD
+    uExitCode : DWORD
 
 GetProcessHeap PROTO
 
-GetStdHandle PROTO,
-nStdHandle : DWORD
-
 HeapAlloc PROTO,
-hHeap : DWORD, ; handle to private heap block
-dwFlags : DWORD, ; heap allocation control flags
-dwBytes : DWORD; number of bytes to allocate
+    hHeap : DWORD, ; handle to private heap block
+    dwFlags : DWORD, ; heap allocation control flags
+    dwBytes : DWORD; number of bytes to allocate
 
 HeapFree PROTO,
-hHeap:DWORD, ; handle to heap with memory block
-dwFlags : DWORD, ; heap free options
-lpMem : DWORD; pointer to block to be freed
+    hHeap : DWORD, ; handle to heap with memory block
+    dwFlags : DWORD, ; heap free options
+    lpMem : DWORD; pointer to block to be freed
+
+; procedures from consoleIO.asm
+ConsoleWriteHex PROTO,
+    num : DWORD
 
 hexStrToNum PROTO,
-value:DWORD
+    value : DWORD
 
 initIO PROTO
 
 readConsole PROTO,
-readLoc : DWORD,
-readAmount : DWORD
-
-randInit PROTO
-
-randRange PROTO,
-    :BYTE
+    readLoc : DWORD,
+    readAmount : DWORD
 
 writeConsole PROTO,
     prompt : DWORD,
     promptSize : DWORD
 
-WriteFile PROTO,
-    hFile:DWORD,
-    lpBuffer:DWORD,
-    nNumberOfBytesToWrite:DWORD,
-    lpNumberOfBytesWritten:DWORD,
-    lpOverlapped:DWORD
+; procedures from random.asm
+randInit PROTO
+
+randRange PROTO,
+    upperBound : BYTE
+
+; procedures from fileIO.asm
+fileCreate PROTO,
+    pFilename : PTR BYTE
+
+fileWrite PROTO,
+    hFile : DWORD,
+    lpBuffer : DWORD,
+    nNumberOfBytesToWrite : DWORD
 
 ; procedures from midi.asm
 noteEvent proto,
@@ -331,14 +204,14 @@ main PROC
     mov fileName[eax+1], "m"
     mov fileName[eax+2], "i"
     mov fileName[eax+3], "d"
-    INVOKE CreateFileA, ADDR fileName, FILE_APPEND_DATA, FILE_SHARE_READ, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, 0   ;using windows api
+    INVOKE fileCreate, ADDR fileName
     .if EAX == INVALID_HANDLE_VALUE             ; checks for invalid handle
         jmp quit                                ; quits program
     .endif
     mov hFile,eax
     mov ecx, headerChunkLen
     mov edx, OFFSET headerChunk
-    invoke WriteFile, eax, edx, ecx, NULL, NULL ; using windows api
+    invoke fileWrite, eax, edx, ecx
     .if EAX == 0
         jmp closeAndQuit
     .endif
@@ -390,7 +263,7 @@ tempoContinue:
     mov ecx, track0ChunkLen
     mov eax, hFile
     mov edx, OFFSET track0Chunk
-    invoke WriteFile, eax, edx, ecx, NULL, NULL
+    invoke fileWrite, eax, edx, ecx
     .if EAX == 0
         jmp closeAndQuit
     .endif
@@ -935,7 +808,7 @@ write:
     mov ecx, track1ChunkLen
     mov eax, hFile
     mov edx, track1Chunk
-    invoke WriteFile, eax, edx, ecx, NULL, NULL
+    invoke fileWrite, eax, edx, ecx
     .if EAX == 0
         jmp closeAndQuit
    .endif
@@ -945,7 +818,7 @@ write:
     mov ecx, track2ChunkLen
     mov eax, hFile
     mov edx, track2Chunk
-    invoke WriteFile, eax, edx, ecx, NULL, NULL
+    invoke fileWrite, eax, edx, ecx
     .if EAX == 0
         jmp closeAndQuit
     .endif
@@ -973,7 +846,7 @@ write:
     mov ecx, track3ChunkLen
     mov eax, hFile
     mov edx, track3Chunk
-    invoke WriteFile, eax, edx, ecx, NULL, NULL
+    invoke fileWrite, eax, edx, ecx
     .if EAX == 0
         jmp closeAndQuit
     .endif
