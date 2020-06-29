@@ -102,11 +102,15 @@ sequenceCount db 0
 currentPitch byte 3ch
 currentChord byte 0
 
-HEAP_ZERO_MEMORY = 00000008h
+HEAP_ZERO_MEMORY = 8h
 NULL = 0
 INVALID_HANDLE_VALUE = -1
+LOCALE_USER_DEFAULT = 400h
+LOCALE_SYSTEM_DEFAULT = 800h
 
 inString BYTE 8 DUP(0), "h"
+
+format BYTE "HH mm ss", 0
 
 hFile  DWORD ? ; handle to the file
 hHeap  DWORD ? ; handle to the heap
@@ -123,7 +127,17 @@ CloseHandle PROTO,
 ExitProcess PROTO,
     uExitCode : DWORD
 
+GetLastError PROTO
+
 GetProcessHeap PROTO
+
+GetTimeFormatA PROTO,
+    Locale : DWORD,
+    dwFlags : DWORD,
+    lpTime : DWORD,
+    lpFormat : DWORD,
+    lpTimeStr : DWORD,
+    cchTime : DWORD
 
 HeapAlloc PROTO,
     hHeap : DWORD, ; handle to private heap block
@@ -196,10 +210,8 @@ main PROC
     call initIO
     
     ; prompt for the filename and create the file, creating the header chunk
-    invoke writeConsole, offset fileNamePrompt, fileNamePromptLen
-    invoke readConsole, offset fileName, 0fdh
-    mov eax, bytesRead
-    sub eax, 2                                  ; to account for the Cr and Lf chars
+    invoke GetTimeFormatA, LOCALE_SYSTEM_DEFAULT, NULL, NULL, offset format, offset fileName, 10
+    mov eax, 8
     mov fileName[eax], "."                      ; add .mid extension to file name
     mov fileName[eax+1], "m"
     mov fileName[eax+2], "i"
