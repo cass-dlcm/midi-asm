@@ -1,0 +1,89 @@
+Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/29/20 16:56:59
+..\..\Programming\midi-asm\random.asm			     Page 1 - 1
+
+
+				.686P; Pentium Pro or later
+				.MODEL flat, stdcall
+				.STACK 4096
+				includelib Bcrypt.lib
+ 00000000			.data
+ 00000000 00000000		rngHandle DWORD ?
+ 00000004 0052 004E 0047	rngIdentifier WORD 52h, 4eh, 47h, 0
+	   0000
+ 0000000C 00			randomNum BYTE 0
+ 00000000			.code
+				BCryptGenRandom PROTO,
+					hAlgorithm : PTR DWORD,
+					pbBuffer : PTR BYTE,
+					cbBuffer : DWORD,
+					dwFlags : DWORD,
+
+				BCryptOpenAlgorithmProvider PROTO,
+					phAlgorithm : PTR DWORD,
+					pszAlgId : PTR BYTE,
+					pszImplementation : DWORD,
+					dwFlags : DWORD
+
+ 00000000			randInit PROC
+					invoke BCryptOpenAlgorithmProvider, ADDR rngHandle, ADDR rngIdentifier, 0, 0
+ 00000013			randInit ENDP
+
+				; ------------------------------------------------------------------------------ -
+ 00000013			randRange PROC USES ECX,
+					upperBound:BYTE
+				; ------------------------------------------------------------------------------ -
+ 00000017			try:
+					invoke BCryptGenRandom, rngHandle, ADDR randomNum, 1, 0
+ 0000002B  A0 0000000C R		mov al, randomNum
+ 00000030  3A 45 08			cmp al, upperBound
+ 00000033  77 E2			ja try
+					ret
+ 0000003A			randRange ENDP
+				END
+Microsoft (R) Macro Assembler Version 14.26.28806.0	    06/29/20 16:56:59
+..\..\Programming\midi-asm\random.asm			     Symbols 2 - 1
+
+
+
+
+Segments and Groups:
+
+                N a m e                 Size     Length   Align   Combine Class
+
+FLAT . . . . . . . . . . . . . .	GROUP
+STACK  . . . . . . . . . . . . .	32 Bit	 00001000 Para	  Stack	  'STACK'	 
+_DATA  . . . . . . . . . . . . .	32 Bit	 0000000D Para	  Public  'DATA'	
+_TEXT  . . . . . . . . . . . . .	32 Bit	 0000003A Para	  Public  'CODE'	
+
+
+Procedures, parameters, and locals:
+
+                N a m e                 Type     Value    Attr
+
+BCryptGenRandom  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+BCryptOpenAlgorithmProvider  . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+randInit . . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 00000013 Public STDCALL
+randRange  . . . . . . . . . . .	P Near	 00000013 _TEXT	Length= 00000027 Public STDCALL
+  upperBound . . . . . . . . . .	Byte	 bp + 00000008
+  try  . . . . . . . . . . . . .	L Near	 00000017 _TEXT	
+
+
+Symbols:
+
+                N a m e                 Type     Value    Attr
+
+@CodeSize  . . . . . . . . . . .	Number	 00000000h   
+@DataSize  . . . . . . . . . . .	Number	 00000000h   
+@Interface . . . . . . . . . . .	Number	 00000003h   
+@Model . . . . . . . . . . . . .	Number	 00000007h   
+@code  . . . . . . . . . . . . .	Text   	 _TEXT
+@data  . . . . . . . . . . . . .	Text   	 FLAT
+@fardata?  . . . . . . . . . . .	Text   	 FLAT
+@fardata . . . . . . . . . . . .	Text   	 FLAT
+@stack . . . . . . . . . . . . .	Text   	 FLAT
+randomNum  . . . . . . . . . . .	Byte	 0000000C _DATA	
+rngHandle  . . . . . . . . . . .	DWord	 00000000 _DATA	
+rngIdentifier  . . . . . . . . .	Word	 00000004 _DATA	
+
+	   0 Warnings
+	   0 Errors
