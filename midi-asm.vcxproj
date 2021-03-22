@@ -11,12 +11,12 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="..\..\Programming\midi-asm\consoleIO.asm" />
-    <MASM Include="..\..\Programming\midi-asm\drumGen.asm" />
-    <MASM Include="..\..\Programming\midi-asm\fileIO.asm" />
-    <MASM Include="..\..\Programming\midi-asm\main.asm" />
-    <MASM Include="..\..\Programming\midi-asm\midi.asm" />
-    <MASM Include="..\..\Programming\midi-asm\random.asm" />
+    <MASM Include="consoleIO.asm" />
+    <MASM Include="drumGen.asm" />
+    <MASM Include="fileIO.asm" />
+    <MASM Include="main.asm" />
+    <MASM Include="midi.asm" />
+    <MASM Include="random.asm" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{c7003056-a0f0-4f00-b2c6-f304a7758247}</ProjectGuid>
