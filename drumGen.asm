@@ -5,6 +5,7 @@
 externdef drumOffset:dword
 
 extern track3Chunk:dword
+extern dynamic:byte
 
 drumOffset dword 0bh
 
@@ -12,7 +13,8 @@ drumOffset dword 0bh
 noteEvent proto,
     time:byte,
     event:byte,
-    pitch:byte
+    pitch:byte,
+    velocity:byte
 
 randRange proto,
     upperBound:byte
@@ -23,6 +25,16 @@ acousticBassDrumOn proto
 acousticSnareOff proto,
     time : byte
 acousticSnareOn proto
+bassDrum1Off proto,
+    time:byte
+bassDrum1On proto
+clavesOff proto,
+    time : byte
+clavesOn proto,
+    time:byte
+closedHiHatOff proto,
+    time:byte
+closedHiHatOn proto
 highMidTomOff proto,
     time : byte
 highMidTomOn proto
@@ -144,6 +156,8 @@ drum3D PROTO
 drum3E PROTO
 
 drumChoose proc uses eax
+call drum40
+ret
 mov eax, 3eh
 invoke randRange, al
 ; root of the decision tree
@@ -800,7 +814,7 @@ drumLoop1 :
     invoke highMidTomOff, 24
     invoke acousticSnareOff, 0
     call acousticSnareOn
-    invoke noteEvent, 24, 89h, 38
+    invoke acousticSnareOff, 24
     dec ecx
     loop drumLoop1
     endLoop1 :
@@ -822,7 +836,7 @@ call acousticSnareOn
 invoke highMidTomOff, 24
 invoke acousticSnareOff, 0
 call acousticSnareOn
-invoke noteEvent, 24, 89h, 38
+invoke acousticSnareOff, 24
 call highMidTomOn
 invoke highMidTomOff, 48
 call highMidTomOn
@@ -843,23 +857,23 @@ mov ecx, 4
 drumLoop:
 cmp ecx, 0
 je endLoop
-invoke noteEvent, 0, 99h, 45; low tom
-invoke noteEvent, 32, 89h, 45
-invoke noteEvent, 0, 99h, 45; low tom
-invoke noteEvent, 16, 89h, 45
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
+invoke noteEvent, 32, 89h, 45, dynamic
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
+invoke noteEvent, 16, 89h, 45, dynamic
 call acousticSnareOn
-invoke noteEvent, 0, 99h, 45; low tom
-invoke noteEvent, 32, 89h, 38
-invoke noteEvent, 0, 89h, 45
-invoke noteEvent, 0, 99h, 45; low tom
-invoke noteEvent, 16, 89h, 45
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
+invoke noteEvent, 32, 89h, 38, dynamic
+invoke noteEvent, 0, 89h, 45, dynamic
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
+invoke noteEvent, 16, 89h, 45, dynamic
 dec ecx
 jmp drumLoop
 endLoop :
 ret
 drum8 ENDP
 
-drum9 PROC USES ECX EDI; kickand snare
+drum9 PROC USES ECX EDI; kick and snare
 mov edi, drumOffset
 add edi, track3Chunk
 add drumOffset, 40h
@@ -868,16 +882,16 @@ drumLoop:
 cmp ecx, 0
 je endLoop
 call acousticBassDrumOn
-invoke noteEvent, 48, 89h, 35
+invoke noteEvent, 48, 89h, 35, dynamic
 call acousticSnareOn
-invoke noteEvent, 48, 89h, 38
+invoke noteEvent, 48, 89h, 38, dynamic
 dec ecx
 jmp drumLoop
 endLoop :
 ret
 drum9 ENDP
 
-drumA PROC USES ECX EDI; kickand snare var 1
+drumA PROC USES ECX EDI; kick and snare var 1
 mov edi, drumOffset
 add edi, track3Chunk
 add drumOffset, 40h
@@ -886,20 +900,20 @@ drumLoop:
 cmp ecx, 0
 je endLoop
 call acousticBassDrumOn
-invoke noteEvent, 48, 89h, 35
+invoke noteEvent, 48, 89h, 35, dynamic
 call acousticSnareOn
-invoke noteEvent, 72, 89h, 38
+invoke noteEvent, 72, 89h, 38, dynamic
 call acousticBassDrumOn
 invoke acousticBassDrumOff, 24
 call acousticSnareOn
-invoke noteEvent, 48, 89h, 38
+invoke noteEvent, 48, 89h, 38, dynamic
 dec ecx
 jmp drumLoop
 endLoop :
 ret
 drumA ENDP
 
-drumB PROC USES ECX EDI; kickand snare var 2
+drumB PROC USES ECX EDI; kick and snare var 2
 mov edi, drumOffset
 add edi, track3Chunk
 add drumOffset, 50h
@@ -908,22 +922,22 @@ drumLoop:
 cmp ecx, 0
 je endLoop
 call acousticBassDrumOn
-invoke noteEvent, 48, 89h, 35
+invoke noteEvent, 48, 89h, 35, dynamic
 call acousticSnareOn
-invoke noteEvent, 48, 89h, 38
+invoke noteEvent, 48, 89h, 38, dynamic
 call acousticBassDrumOn
 invoke acousticBassDrumOff, 24
 call acousticBassDrumOn
 invoke acousticBassDrumOff, 24
 call acousticSnareOn
-invoke noteEvent, 48, 89h, 38
+invoke noteEvent, 48, 89h, 38, dynamic
 dec ecx
 jmp drumLoop
 endLoop :
 ret
 drumB ENDP
 
-drumC PROC USES ECX EDI; kickand snare var 3
+drumC PROC USES ECX EDI; kick and snare var 3
 mov edi, drumOffset
 add edi, track3Chunk
 add drumOffset, 60h
@@ -932,15 +946,15 @@ drumLoop:
 cmp ecx, 0
 je endLoop
 call acousticBassDrumOn
-invoke noteEvent, 48, 89h, 35
+invoke noteEvent, 48, 89h, 35, dynamic
 call acousticSnareOn
-invoke noteEvent, 48, 89h, 38
+invoke noteEvent, 48, 89h, 38, dynamic
 call acousticBassDrumOn
 invoke acousticBassDrumOff, 24
 call acousticBassDrumOn
 invoke acousticBassDrumOff, 24
 call acousticSnareOn
-invoke noteEvent, 24, 89h, 38
+invoke noteEvent, 24, 89h, 38, dynamic
 call acousticBassDrumOn
 invoke acousticBassDrumOff, 24
 dec ecx
@@ -983,25 +997,25 @@ mov ecx, 4
 drumLoop:
 cmp ecx, 0
 je endLoop
-invoke noteEvent, 0, 99h, 45; low tom
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
 call acousticBassDrumOn
-invoke noteEvent, 24, 89h, 45
+invoke noteEvent, 24, 89h, 45, dynamic
 invoke acousticBassDrumOff, 0
-invoke noteEvent, 0, 99h, 45; low tom
-invoke noteEvent, 24, 89h, 45
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
+invoke noteEvent, 24, 89h, 45, dynamic
 call acousticSnareOn
-invoke noteEvent, 0, 99h, 45; low tom
-invoke noteEvent, 24, 89h, 38
-invoke noteEvent, 0, 89h, 45
-invoke noteEvent, 0, 99h, 45; low tom
-invoke noteEvent, 24, 89h, 45
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
+invoke noteEvent, 24, 89h, 38, dynamic
+invoke noteEvent, 0, 89h, 45, dynamic
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
+invoke noteEvent, 24, 89h, 45, dynamic
 dec ecx
 jmp drumLoop
 endLoop :
 ret
 drumE ENDP
 
-drumF PROC USES ECX EDI
+drumF PROC USES ECX EDI; kick var 1
 mov edi, drumOffset
 add edi, track3Chunk
 add drumOffset, 0c0h
@@ -1060,7 +1074,7 @@ invoke acousticSnareOff, 0
 call acousticBassDrumOn
 call highMidTomOn
 invoke acousticBassDrumOff, 24
-invoke highMidTomOff, 0
+invoke highMidTomOff, 0 
 call highMidTomOn
 invoke highMidTomOff, 24
 call highMidTomOn
@@ -1294,14 +1308,14 @@ je endLoop
 call acousticBassDrumOn
 call highMidTomOn
 invoke acousticBassDrumOff, 24
-invoke noteEvent, 0, 89h, 48
+invoke highMidTomOff, 0
 call highMidTomOn
 invoke highMidTomOff, 24
 call acousticBassDrumOn
 call highMidTomOn
 call acousticSnareOn
 invoke acousticBassDrumOff, 24
-invoke noteEvent, 0, 89h, 48
+invoke noteEvent, 0, 89h, 48, dynamic
 invoke acousticSnareOff, 0
 call highMidTomOn
 invoke highMidTomOff, 24
@@ -1628,7 +1642,7 @@ cmp ecx, 0
 je endLoop
 call acousticBassDrumOn
 call highMidTomOn
-invoke noteEvent, 48, 89h, 35
+invoke noteEvent, 48, 89h, 35, dynamic
 invoke highMidTomOff, 0
 call highMidTomOn
 call acousticSnareOn
@@ -1648,23 +1662,23 @@ mov ecx, 2
 drumLoop:
 cmp ecx, 0
 je endLoop
-invoke noteEvent, 0, 99h, 45; low tom
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
 call acousticBassDrumOn
-invoke noteEvent, 48, 89h, 45
+invoke noteEvent, 48, 89h, 45, dynamic
 invoke acousticBassDrumOff, 0
-invoke noteEvent, 0, 99h, 45; low tom
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
 call acousticSnareOn
-invoke noteEvent, 24, 89h, 45
+invoke noteEvent, 24, 89h, 45, dynamic
 invoke acousticSnareOff, 0
 call acousticBassDrumOn
 invoke acousticBassDrumOff, 24
-invoke noteEvent, 0, 99h, 45; low tom
-invoke noteEvent, 24, 89h, 45
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
+invoke noteEvent, 24, 89h, 45, dynamic
 call acousticBassDrumOn
 invoke acousticBassDrumOff, 24
-invoke noteEvent, 0, 99h, 45; low tom
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
 call acousticSnareOn
-invoke noteEvent, 48, 89h, 45
+invoke noteEvent, 48, 89h, 45, dynamic
 invoke acousticSnareOff, 0
 dec ecx
 jmp drumLoop
@@ -1690,7 +1704,7 @@ call acousticBassDrumOn
 invoke acousticBassDrumOff, 24
 call acousticBassDrumOn
 call highMidTomOn
-invoke noteEvent, 48, 89h, 35
+invoke noteEvent, 48, 89h, 35, dynamic
 invoke highMidTomOff, 0
 call highMidTomOn
 call acousticSnareOn
@@ -1732,7 +1746,7 @@ invoke acousticBassDrumOff, 24
 call highMidTomOn
 invoke highMidTomOff, 24
 call acousticSnareOn
-invoke noteEvent, 24, 89h, 38
+invoke noteEvent, 24, 89h, 38, dynamic
 call highMidTomOn
 invoke highMidTomOff, 24
 dec ecx
@@ -1754,7 +1768,7 @@ invoke acousticBassDrumOff, 24
 call highMidTomOn
 invoke highMidTomOff, 24
 call acousticSnareOn
-invoke noteEvent, 24, 89h, 38
+invoke noteEvent, 24, 89h, 38, dynamic
 call highMidTomOn
 invoke highMidTomOff, 24
 call acousticBassDrumOn
@@ -1764,7 +1778,7 @@ call highMidTomOn
 invoke acousticBassDrumOff, 24
 invoke highMidTomOff, 0
 call acousticSnareOn
-invoke noteEvent, 24, 89h, 38
+invoke noteEvent, 24, 89h, 38, dynamic
 call highMidTomOn
 invoke highMidTomOff, 24
 dec ecx
@@ -1943,67 +1957,67 @@ drum28 PROC USES EDI; punk toms
 mov edi, drumOffset
 add edi, track3Chunk
 add drumOffset, 0f8h
-invoke noteEvent, 0, 99h, 45; low tom
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
 call acousticBassDrumOn
-invoke noteEvent, 24, 89h, 45
+invoke noteEvent, 24, 89h, 45, dynamic
 invoke acousticBassDrumOff, 0
-invoke noteEvent, 0, 99h, 45; low tom
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
 call acousticBassDrumOn
-invoke noteEvent, 24, 89h, 45
+invoke noteEvent, 24, 89h, 45, dynamic
 invoke acousticBassDrumOff, 0
-invoke noteEvent, 0, 99h, 45; low tom
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
 call acousticSnareOn
-invoke noteEvent, 24, 89h, 45
+invoke noteEvent, 24, 89h, 45, dynamic
 invoke acousticSnareOff, 0
-invoke noteEvent, 0, 99h, 45; low tom
-invoke noteEvent, 12, 89h, 45
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
+invoke noteEvent, 12, 89h, 45, dynamic
 call highMidTomOn
 invoke highMidTomOff, 12
-invoke noteEvent, 0, 99h, 45; low tom
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
 call acousticBassDrumOn
-invoke noteEvent, 24, 89h, 45
+invoke noteEvent, 24, 89h, 45, dynamic
 invoke acousticBassDrumOff, 0
-invoke noteEvent, 0, 99h, 45; low tom
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
 call acousticBassDrumOn
-invoke noteEvent, 24, 89h, 45
+invoke noteEvent, 24, 89h, 45, dynamic
 invoke acousticBassDrumOff, 0
-invoke noteEvent, 0, 99h, 45; low tom
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
 call acousticSnareOn
-invoke noteEvent, 24, 89h, 45
+invoke noteEvent, 24, 89h, 45, dynamic
 invoke acousticSnareOff, 0
-invoke noteEvent, 0, 99h, 45; low tom
-invoke noteEvent, 12, 89h, 45
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
+invoke noteEvent, 12, 89h, 45, dynamic
 call highMidTomOn
 invoke highMidTomOff, 12
-invoke noteEvent, 0, 99h, 45; low tom
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
 call acousticBassDrumOn
-invoke noteEvent, 24, 89h, 45
+invoke noteEvent, 24, 89h, 45, dynamic
 invoke acousticBassDrumOff, 0
-invoke noteEvent, 0, 99h, 45; low tom
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
 call acousticBassDrumOn
-invoke noteEvent, 24, 89h, 45
+invoke noteEvent, 24, 89h, 45, dynamic
 invoke acousticBassDrumOff, 0
-invoke noteEvent, 0, 99h, 45; low tom
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
 call acousticSnareOn
-invoke noteEvent, 24, 89h, 45
+invoke noteEvent, 24, 89h, 45, dynamic
 invoke acousticSnareOff, 0
-invoke noteEvent, 0, 99h, 45; low tom
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
 call acousticBassDrumOn
-invoke noteEvent, 24, 89h, 45
+invoke noteEvent, 24, 89h, 45, dynamic
 invoke acousticBassDrumOff, 0
-invoke noteEvent, 0, 99h, 45; low tom
-invoke noteEvent, 24, 89h, 45
-invoke noteEvent, 0, 99h, 45; low tom
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
+invoke noteEvent, 24, 89h, 45, dynamic
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
 call acousticBassDrumOn
-invoke noteEvent, 24, 89h, 45
+invoke noteEvent, 24, 89h, 45, dynamic
 invoke acousticBassDrumOff, 0
-invoke noteEvent, 0, 99h, 45; low tom
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
 call acousticSnareOn
-invoke noteEvent, 24, 89h, 45
+invoke noteEvent, 24, 89h, 45, dynamic
 invoke acousticSnareOff, 0
-invoke noteEvent, 0, 99h, 45; low tom
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
 call acousticBassDrumOn
-invoke noteEvent, 24, 89h, 45
+invoke noteEvent, 24, 89h, 45, dynamic
 invoke acousticBassDrumOff, 0
 ret
 drum28 ENDP
@@ -2088,36 +2102,36 @@ cmp ecx, 0
 je endLoop
 call acousticBassDrumOn
 call highMidTomOn
-invoke noteEvent, 0, 99h, 45; low tom
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
 invoke acousticBassDrumOff, 24
 invoke highMidTomOff, 0
-invoke noteEvent, 0, 89h, 45
-invoke noteEvent, 0, 99h, 45; low tom
-invoke noteEvent, 12, 89h, 45
+invoke noteEvent, 0, 89h, 45, dynamic
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
+invoke noteEvent, 12, 89h, 45, dynamic
 call highMidTomOn
 invoke highMidTomOff, 12
 call acousticBassDrumOn
-invoke noteEvent, 0, 99h, 45; low tom
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
 invoke acousticBassDrumOff, 24
-invoke noteEvent, 0, 89h, 45
+invoke noteEvent, 0, 89h, 45, dynamic
 call highMidTomOn
-invoke noteEvent, 0, 99h, 45; low tom
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
 invoke highMidTomOff, 24
-invoke noteEvent, 0, 89h, 45
+invoke noteEvent, 0, 89h, 45, dynamic
 call acousticBassDrumOn
-invoke noteEvent, 0, 99h, 45; low tom
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
 invoke acousticBassDrumOff, 12
-invoke noteEvent, 0, 89h, 45
+invoke noteEvent, 0, 89h, 45, dynamic
 call highMidTomOn
 invoke highMidTomOff, 12
-invoke noteEvent, 0, 99h, 45; low tom
-invoke noteEvent, 24, 89h, 45
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
+invoke noteEvent, 24, 89h, 45, dynamic
 call acousticBassDrumOn
 call highMidTomOn
-invoke noteEvent, 0, 99h, 45; low tom
+invoke noteEvent, 0, 99h, 45, dynamic; low tom
 invoke acousticBassDrumOff, 24
 invoke highMidTomOff, 0
-invoke noteEvent, 0, 89h, 45
+invoke noteEvent, 0, 89h, 45, dynamic
 call highMidTomOn
 call acousticSnareOn
 invoke highMidTomOff, 24
@@ -2900,6 +2914,81 @@ jmp drumLoop
 endLoop :
 ret
 drum3E ENDP
+
+
+drum3F PROC USES ECX EDI;   12 - 8 equals 4 - 4 drum pattern
+    mov edi, drumOffset
+    add edi, track3Chunk
+    add drumOffset, 80h
+    mov ecx, 2
+drumLoop:
+    cmp ecx, 0
+    je endLoop
+    call closedHiHatOn
+    call bassDrum1On
+    invoke closedHiHatOff, 32
+    call closedHiHatOn
+    invoke closedHiHatOff, 32
+    call closedHiHatOn
+    invoke bassDrum1Off, 32
+    invoke closedHiHatOff, 0
+    call closedHiHatOn
+    call acousticSnareOn
+    invoke closedHiHatOff, 32
+    call closedHiHatOn
+    invoke closedHiHatOff, 32
+    call closedHiHatOn
+    invoke acousticSnareOff, 32
+    invoke closedHiHatOff, 0
+    dec ecx
+    jmp drumLoop
+endLoop:
+    ret
+drum3F ENDP
+
+drum40 PROC USES ECX EDI;
+    mov edi, drumOffset
+    add edi, track3Chunk
+    add drumOffset, 48h
+    call closedHiHatOn
+    call bassDrum1On
+    invoke closedHiHatOff, 40h
+    call closedHiHatOn
+    invoke bassDrum1Off, 40h
+    invoke closedHiHatOff, 0
+    mov ecx, 2
+drumLoop:
+    cmp ecx, 0
+    je endLoop
+    call acousticSnareOn
+    call closedHiHatOn
+    invoke acousticSnareOff, 40h
+    invoke closedHiHatOff, 0
+    call closedHiHatOn
+    invoke closedHiHatOff, 40h
+    dec ecx
+    jmp drumLoop
+endLoop :
+    ret
+drum40 ENDP
+
+drum41 PROC USES ECX EDI;
+    mov edi, drumOffset
+    add edi, track3Chunk
+    add drumOffset, 2Dh
+    invoke clavesOn, 0
+    invoke clavesOff, 60h
+    invoke clavesOn, 30h
+    invoke clavesOff, 30h
+    invoke clavesOn, 90h
+    invoke clavesOff, 30h
+    invoke clavesOn, 60h
+    invoke clavesOff, 60h
+    invoke clavesOn, 0
+    invoke clavesOff, 60h
+    invoke clavesOff, 30h
+    ret
+drum41 ENDP
 
 drum PROC USES ECX EDI;
 mov edi, drumOffset

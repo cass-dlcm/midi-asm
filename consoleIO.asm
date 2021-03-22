@@ -23,7 +23,7 @@ externdef outMeasurePromptLen:DWORD
 externdef errorMsg:BYTE
 externdef segmentNumOobErr:BYTE
 externdef measureNumOobErr:BYTE
-externdef timeOorErr:BYTE
+externdef velocityOorErr:BYTE
 externdef pitchOorErr:BYTE
 externdef invalidRange:BYTE
 externdef testStr:BYTE
@@ -55,7 +55,7 @@ outMeasurePromptLen DWORD $-outMeasurePrompt
 errorMsg BYTE "An error has occured. Terminating."; error message produced if something goes wrong
 segmentNumOobErr BYTE "The segment number (in ESI) is out of bounds!"; tells if user segment is out of bounds
 measureNumOobErr BYTE "The message number (in BL) is out of bounds!"; tells if user message is out of bounds
-timeOorErr BYTE "The time (in BH) is too high!"; tells if inputted time is out of bounds
+velocityOorErr BYTE "The veloctiy (in BL) is too high!"; tells if inputted time is out of bounds
 pitchOorErr BYTE "The pitch (in DL) is too high!"; tells if user pitch is too high
 invalidRange BYTE "The range you specified is invalid!"
 testStr BYTE "test"

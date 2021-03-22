@@ -4,7 +4,7 @@
 .data
 extern segmentNumOobErr:BYTE
 extern measureNumOobErr:BYTE
-extern timeOorErr:BYTE
+extern velocityOorErr:BYTE
 extern pitchOorErr:BYTE
 .code
 Error proto
@@ -13,17 +13,19 @@ Error proto
 noteEvent proc uses ebx edx,
 	time:byte, ; the delta time of the event
 	event:byte, ; the type of note event
-	pitch:byte; the pitch of the note
+	pitch:byte, ; the pitch of the note
+	velocity:byte; the loudness of the note
 ; stores a note event in the dword specified by EDI
 ; Returns: nothing
 ; ------------------------------------------------------------------------------ -
 	mov bh, time
-	cmp bh, 80h; check that the time is valid
-	jb continue0; jump if time is valid
-	mov edx, OFFSET timeOorErr; pass type of error
-	mov ecx, sizeof timeOorErr
+	mov bl, velocity
+	cmp bl, 80h; check that the velocity is valid
+	jb continue0; jump if velocity is valid
+	mov edx, OFFSET velocityOorErr; pass type of error
+	mov ecx, sizeof velocityOorErr
 	call Error; call time error if invalid
-continue0 :
+continue0:
 	mov dl, pitch
 	cmp dl, 80h; check that the pitch is valid
 	jb continue1; jump if pitch is valid
@@ -42,34 +44,68 @@ noteEvent endp
 
 acousticBassDrumOff proc,
 	time:byte
-	invoke noteEvent, time, 89h, 35
+	invoke noteEvent, time, 89h, 35, 40h
 	ret
 acousticBassDrumOff endp
 
 acousticBassDrumOn proc
-	invoke noteEvent, 0, 99h, 35
+	invoke noteEvent, 0, 99h, 35, 40h
 	ret
 acousticBassDrumOn endp
 
 acousticSnareOff proc,
 	time:byte
-	invoke noteEvent, time, 89h, 38
+	invoke noteEvent, time, 89h, 38, 40h
 	ret
 acousticSnareOff endp
 
 acousticSnareOn proc
-	invoke noteEvent, 0, 99h, 38
+	invoke noteEvent, 0, 99h, 38, 40h
 	ret
 acousticSnareOn endp
 
+bassDrum1Off proc,
+	time:byte
+	invoke noteEvent, time, 89h, 24h, 40h
+	ret
+bassDrum1Off endp
+
+bassDrum1On proc
+	invoke noteEvent, 0, 99h, 24h, 40h
+	ret
+bassDrum1On endp
+
+clavesOff proc,
+	time:byte
+	invoke noteEvent, time, 89h, 4bh, 40h
+	ret
+clavesOff endp
+
+clavesOn proc,
+	time:byte
+	invoke noteEvent, time, 99h, 4bh, 40h
+	ret
+clavesOn endp
+
+closedHiHatOff proc,
+	time:byte
+	invoke noteEvent, time, 89h, 2ah, 40h
+	ret
+closedHiHatOff endp
+
+closedHiHatOn proc
+	invoke noteEvent, 0, 99h, 2ah, 40h
+	ret
+closedHiHatOn endp
+
 highMidTomOff proc,
 	time:byte
-	invoke noteEvent, time, 89h, 48
+	invoke noteEvent, time, 89h, 48, 40h
 	ret
 highMidTomOff endp
 
 highMidTomOn proc
-	invoke noteEvent, 0, 99h, 48
+	invoke noteEvent, 0, 99h, 48, 40h
 	ret
 highMidTomOn endp
 end

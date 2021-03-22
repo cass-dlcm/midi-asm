@@ -32,6 +32,7 @@ extern numStr : BYTE
 extern drumOffset : DWORD
 
 externdef track3Chunk : dword
+externdef dynamic : BYTE
 
 fileName BYTE 0ffh DUP(0)
 
@@ -93,6 +94,8 @@ track2ChunkLen dword 100fh
 track3ChunkLen dword 100fh
 
 cPitch dword 3Ch; middle c in midi
+
+dynamic byte 3Fh
 
 minMeasures dword 0; minimum number of measrues to generate
 measureCount dword 0; variable of measures to generate
@@ -185,7 +188,8 @@ fileWrite PROTO,
 noteEvent proto,
     time:byte,
     event:byte,
-    pitch:byte
+    pitch:byte,
+    velocity:byte
 
 ; procedures from drumGen.asm
 drumChoose proto
@@ -412,7 +416,7 @@ trackPrep:
     mov [edi+4], ah
     mov [edi+8], BYTE PTR 0
     mov [edi+9], BYTE PTR 0C9h
-    mov [edi+0ah], BYTE PTR 119
+    mov [edi+0ah], BYTE PTR 0
 
     ; prepare counter for looping
     xor ecx, ecx
@@ -463,46 +467,40 @@ notesContinue:
     xor edx, edx
 
     ; bottom note on
-    INVOKE noteEvent, 0, 90h, currentPitch
+    INVOKE noteEvent, 0, 90h, currentPitch, dynamic
 
     ; second note on
     mov dl, currentPitch
     add dl, [esi]
-    INVOKE noteEvent, 0, 90h, dl
+    INVOKE noteEvent, 0, 90h, dl, dynamic
 
     ; third note on
     mov dl, currentPitch
     add dl, [esi+1]
-    INVOKE noteEvent, 0, 90h, dl
+    INVOKE noteEvent, 0, 90h, dl, dynamic
 
     ; top note on
     mov dl, currentPitch
     add dl, [esi+2]
-    INVOKE noteEvent, 0, 90h, dl
+    INVOKE noteEvent, 0, 90h, dl, dynamic
 
     ; bottom note off
-    mov dl, currentPitch
-    mov [edi], BYTE PTR 83h
-    mov [1+edi], BYTE PTR 00h
-    mov [2+edi], BYTE PTR 80h
-    mov [3+edi], dl
-    mov [4+edi], BYTE PTR 40h
-    add edi, 5
+    INVOKE noteEvent, 83h, 80h, currentPitch, dynamic
 
     ; second note off
     mov dl, currentPitch
     add dl, [esi]
-    INVOKE noteEvent, 0, 80h, dl
+    INVOKE noteEvent, 0, 80h, dl, dynamic
 
     ; third note off
     mov dl, currentPitch
     add dl, [esi+1]
-    INVOKE noteEvent, 0, 80h, dl
+    INVOKE noteEvent, 0, 80h, dl, dynamic
 
     ; top note off
     mov dl, currentPitch
     add dl, [esi+2]
-    INVOKE noteEvent, 0, 80h, dl
+    INVOKE noteEvent, 0, 80h, dl, dynamic
 
     mov eax, ecx
     mov ebx, 40h
@@ -526,99 +524,99 @@ guitarPattern0:
     ; bottom guitar note on
     mov dl, currentPitch
     sub dl, 12
-    INVOKE noteEvent, 0, 91h, dl
+    INVOKE noteEvent, 0, 91h, dl, dynamic
 
     ; top guitar note on
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+2]
-    INVOKE noteEvent, 30h, 91h, dl
+    INVOKE noteEvent, 30h, 91h, dl, dynamic
 
     ; bottom guitar note off
     mov dl, currentPitch
     sub dl, 12
-    INVOKE noteEvent, 30h, 81h, dl
+    INVOKE noteEvent, 30h, 81h, dl, dynamic
 
 
     ; second guitar note on
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi]
-    INVOKE noteEvent, 0, 91h, dl
+    INVOKE noteEvent, 0, 91h, dl, dynamic
 
     ; top guitar note off
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+2]
-    INVOKE noteEvent, 30h, 81h, dl
+    INVOKE noteEvent, 30h, 81h, dl, dynamic
     
     ; third guitar note on
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
-    INVOKE noteEvent, 0, 91h, dl
+    INVOKE noteEvent, 0, 91h, dl, dynamic
 
     ; second guitar note off
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
-    INVOKE noteEvent, 30h, 81h, dl
+    INVOKE noteEvent, 30h, 81h, dl, dynamic
 
     ; bottom guitar note on
     mov dl, currentPitch
     sub dl, 12
-    INVOKE noteEvent, 0, 91h, dl
+    INVOKE noteEvent, 0, 91h, dl, dynamic
 
     ; third guitar note off
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
-    INVOKE noteEvent, 30h, 81h, dl
+    INVOKE noteEvent, 30h, 81h, dl, dynamic
 
 
     ; top guitar note on
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+2]
-    INVOKE noteEvent, 0, 91h, dl
+    INVOKE noteEvent, 0, 91h, dl, dynamic
 
 
     ; bottom guitar note off
     mov dl, currentPitch
     sub dl, 12
-    INVOKE noteEvent, 30h, 81h, dl
+    INVOKE noteEvent, 30h, 81h, dl, dynamic
 
 
     ; second guitar note on
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi]
-    INVOKE noteEvent, 0, 91h, dl
+    INVOKE noteEvent, 0, 91h, dl, dynamic
 
     ; top guitar note off
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+2]
-    INVOKE noteEvent, 30h, 81h, dl
+    INVOKE noteEvent, 30h, 81h, dl, dynamic
 
     ; third guitar note on
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
-    INVOKE noteEvent, 0, 91h, dl
+    INVOKE noteEvent, 0, 91h, dl, dynamic
 
 
     ; second guitar note off
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi]
-    INVOKE noteEvent, 30h, 81h, dl
+    INVOKE noteEvent, 30h, 81h, dl, dynamic
 
     ; third guitar note off
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
-    INVOKE noteEvent, 0, 81h, dl
+    INVOKE noteEvent, 0, 81h, dl, dynamic
 
     inc ecx
     jmp notes
@@ -627,94 +625,94 @@ guitarPattern1:
     ; bottom guitar note on
     mov dl, currentPitch
     sub dl, 12
-    INVOKE noteEvent, 0, 91h, dl
+    INVOKE noteEvent, 0, 91h, dl, dynamic
 
     ; third guitar note on
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
-    INVOKE noteEvent, 30h, 91h, dl
+    INVOKE noteEvent, 30h, 91h, dl, dynamic
 
     ; bottom guitar note off
     mov dl, currentPitch
     sub dl, 12
-    INVOKE noteEvent, 30h, 81h, dl
+    INVOKE noteEvent, 30h, 81h, dl, dynamic
 
     ; second guitar note on
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi]
-    INVOKE noteEvent, 0, 91h, dl
+    INVOKE noteEvent, 0, 91h, dl, dynamic
 
     ; third guitar note off
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
-    INVOKE noteEvent, 30h, 81h, dl
+    INVOKE noteEvent, 30h, 81h, dl, dynamic
     
     ; top guitar note on
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+2]
-    INVOKE noteEvent, 0, 91h, dl
+    INVOKE noteEvent, 0, 91h, dl, dynamic
 
     ; second guitar note off
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi]
-    INVOKE noteEvent, 30h, 81h, dl
+    INVOKE noteEvent, 30h, 81h, dl, dynamic
 
     ; bottom guitar note on
     mov dl, currentPitch
     sub dl, 12
-    INVOKE noteEvent, 0, 91h, dl
+    INVOKE noteEvent, 0, 91h, dl, dynamic
 
     ; top guitar note off
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+2]
-    INVOKE noteEvent, 30h, 81h, dl
+    INVOKE noteEvent, 30h, 81h, dl, dynamic
 
     ; third guitar note on
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
-    INVOKE noteEvent, 0, 91h, dl
+    INVOKE noteEvent, 0, 91h, dl, dynamic
 
     ; bottom guitar note off
     mov dl, currentPitch
     sub dl, 12
-    INVOKE noteEvent, 30h, 81h, dl
+    INVOKE noteEvent, 30h, 81h, dl, dynamic
 
     ; second guitar note on
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi]
-    INVOKE noteEvent, 0, 91h, dl
+    INVOKE noteEvent, 0, 91h, dl, dynamic
 
     ; third guitar note off
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
-    INVOKE noteEvent, 30h, 81h, dl
+    INVOKE noteEvent, 30h, 81h, dl, dynamic
 
     ; top guitar note on
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+2]
-    INVOKE noteEvent, 0, 91h, dl
+    INVOKE noteEvent, 0, 91h, dl, dynamic
 
     ; second guitar note off
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi]
-    INVOKE noteEvent, 30h, 81h, dl
+    INVOKE noteEvent, 30h, 81h, dl, dynamic
 
     ; top guitar note off
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+2]
-    INVOKE noteEvent, 0, 81h, dl
+    INVOKE noteEvent, 0, 81h, dl, dynamic
     
     inc ecx
     jmp notes
@@ -723,94 +721,94 @@ guitarPattern2:
     ; bottom guitar note on
     mov dl, currentPitch
     sub dl, 12
-    INVOKE noteEvent, 0, 91h, dl
+    INVOKE noteEvent, 0, 91h, dl, dynamic
 
     ; top guitar note on
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+2]
-    INVOKE noteEvent, 0, 91h, dl
+    INVOKE noteEvent, 0, 91h, dl, dynamic
 
     ; bottom guitar note off
     mov dl, currentPitch
     sub dl, 12
-    INVOKE noteEvent, 60h, 81h, dl
+    INVOKE noteEvent, 60h, 81h, dl, dynamic
 
     ; second guitar note on
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi]
-    INVOKE noteEvent, 0, 91h, dl
+    INVOKE noteEvent, 0, 91h, dl, dynamic
 
     ; top guitar note off
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+2]
-    INVOKE noteEvent, 30h, 81h, dl
+    INVOKE noteEvent, 30h, 81h, dl, dynamic
     
     ; third guitar note on
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
-    INVOKE noteEvent, 0, 91h, dl
+    INVOKE noteEvent, 0, 91h, dl, dynamic
 
     ; second guitar note off
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi]
-    INVOKE noteEvent, 30h, 81h, dl
+    INVOKE noteEvent, 30h, 81h, dl, dynamic
 
     ; bottom guitar note on
     mov dl, currentPitch
     sub dl, 12
-    INVOKE noteEvent, 0, 91h, dl
+    INVOKE noteEvent, 0, 91h, dl, dynamic
 
     ; third guitar note off
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
-    INVOKE noteEvent, 30h, 81h, dl
+    INVOKE noteEvent, 30h, 81h, dl, dynamic
 
     ; top guitar note on
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+2]
-    INVOKE noteEvent, 0, 91h, dl
+    INVOKE noteEvent, 0, 91h, dl, dynamic
 
     ; bottom guitar note off
     mov dl, currentPitch
     sub dl, 12
-    INVOKE noteEvent, 30h, 81h, dl
+    INVOKE noteEvent, 30h, 81h, dl, dynamic
 
     ; second guitar note on
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi]
-    INVOKE noteEvent, 0, 91h, dl
+    INVOKE noteEvent, 0, 91h, dl, dynamic
 
     ; top guitar note off
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+2]
-    INVOKE noteEvent, 30h, 81h, dl
+    INVOKE noteEvent, 30h, 81h, dl, dynamic
 
     ; third guitar note on
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
-    INVOKE noteEvent, 0, 91h, dl
+    INVOKE noteEvent, 0, 91h, dl, dynamic
 
     ; second guitar note off
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi]
-    INVOKE noteEvent, 30h, 81h, dl
+    INVOKE noteEvent, 30h, 81h, dl, dynamic
 
     ; third guitar note off
     mov dl, currentPitch
     sub dl, 12
     add dl, [esi+1]
-    INVOKE noteEvent, 0, 81h, dl
+    INVOKE noteEvent, 0, 81h, dl, dynamic
 
     inc ecx
     jmp notes
