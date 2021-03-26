@@ -18,6 +18,13 @@ CreateFileA PROTO, ; create new file
 	attributes : DWORD, ; file attributes
 	htemplate : DWORD; handle to template file
 
+ReadFile PROTO,
+	hFile:DWORD,
+	lpBuffer:DWORD,
+	nNumberOfBytesToRead:DWORD,
+	lpNumberOfBytesRead:DWORD,
+	lpOverlapped:DWORD
+
 WriteFile PROTO,
 	hFile:DWORD,
 	lpBuffer : DWORD,
@@ -30,6 +37,14 @@ fileCreate PROC,
 	invoke CreateFileA, pFilename, FILE_APPEND_DATA, FILE_SHARE_READ, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, 0; using windows api
 	ret
 fileCreate ENDP
+
+fileRead PROC,
+	hFile:DWORD,
+	lpBuffer:DWORD,
+	nNumberOfBytesToRead: DWORD
+	invoke ReadFile, hFile, lpBuffer, nNumberofBytesToRead, NULL, NULL
+	ret
+fileRead ENDP
 
 fileWrite PROC, 
 	hFile:DWORD,
