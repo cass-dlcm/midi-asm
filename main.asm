@@ -381,6 +381,9 @@ trackPrep:
 
     ; allocate memory for track 2
     invoke HeapAlloc, hHeap, HEAP_ZERO_MEMORY, track2ChunkLen
+    .if eax == NULL
+        jmp closeAndQuit
+    .endif
     mov track2Chunk, eax
 
     ; set meta info for track 2
@@ -498,7 +501,7 @@ notesContinue:
     INVOKE noteEvent, 0, 90h, dl, dynamic
 
     ; bottom note off
-    INVOKE noteEvent, 83h, 80h, currentPitch, dynamic
+    INVOKE noteEvent, 180h, 80h, currentPitch, dynamic
 
     ; second note off
     mov dl, currentPitch
@@ -828,20 +831,14 @@ guitarPattern2:
 
 write:
     ; write the first track
-    mov ecx, track1ChunkLen
-    mov eax, hFile
-    mov edx, track1Chunk
-    invoke fileWrite, eax, edx, ecx
+    invoke fileWrite, hFile, track1Chunk, track1ChunkLen
     .if EAX == 0
         jmp closeAndQuit
     .endif
     invoke HeapFree, hHeap, 0, track1Chunk
 
     ; write the second track
-    mov ecx, track2ChunkLen
-    mov eax, hFile
-    mov edx, track2Chunk
-    invoke fileWrite, eax, edx, ecx
+    invoke fileWrite, hFile, track2Chunk, track2ChunkLen
     .if EAX == 0
         jmp closeAndQuit
     .endif
@@ -866,10 +863,7 @@ write:
     mov [edi-1], BYTE PTR 0
 
     ; write the third track
-    mov ecx, track3ChunkLen
-    mov eax, hFile
-    mov edx, track3Chunk
-    invoke fileWrite, eax, edx, ecx
+    invoke fileWrite, hFile, track3Chunk, track3ChunkLen
     .if EAX == 0
         jmp closeAndQuit
     .endif
