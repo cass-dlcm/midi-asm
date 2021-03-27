@@ -33,6 +33,7 @@ extern drumOffset : DWORD
 
 externdef track3Chunk : dword
 externdef dynamic : BYTE
+externdef hHeap : DWORD
 
 fileName BYTE 0ffh DUP(0)
 
@@ -178,11 +179,21 @@ randRange PROTO,
 ; procedures from fileIO.asm
 fileCreate PROTO,
     pFilename : PTR BYTE
+    
+fileLoad PROTO,
+    pFilename : PTR BYTE
 
 fileWrite PROTO,
     hFile : DWORD,
     lpBuffer : DWORD,
     nNumberOfBytesToWrite : DWORD
+
+readVLQ PROTO,
+    hFile: DWORD
+
+writeVLQ PROTO,
+    hFile: DWORD,
+    value: DWORD
 
 ; procedures from midi.asm
 noteEvent proto,
@@ -205,6 +216,8 @@ Error ENDP
 main PROC
     ; initialize the randomizer
     call randInit
+
+    ; set up heap
     invoke GetProcessHeap
     .if eax == NULL
         jmp quit
@@ -212,7 +225,7 @@ main PROC
     mov hHeap, eax
 
     call initIO
-    
+
     ; prompt for the filename and create the file, creating the header chunk
     invoke GetTimeFormatA, LOCALE_SYSTEM_DEFAULT, NULL, NULL, offset format, offset fileName, 10
     mov eax, 8
@@ -821,7 +834,7 @@ write:
     invoke fileWrite, eax, edx, ecx
     .if EAX == 0
         jmp closeAndQuit
-   .endif
+    .endif
     invoke HeapFree, hHeap, 0, track1Chunk
 
     ; write the second track
