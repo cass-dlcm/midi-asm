@@ -21,6 +21,7 @@ externdef maxMeasurePromptLen:DWORD
 externdef outMeasurePrompt:BYTE
 externdef outMeasurePromptLen:DWORD
 externdef errorMsg:BYTE
+externdef errorMsgLen:DWORD
 externdef segmentNumOobErr:BYTE
 externdef measureNumOobErr:BYTE
 externdef velocityOorErr:BYTE
@@ -53,6 +54,7 @@ maxMeasurePromptLen DWORD $-maxMeasurePrompt
 outMeasurePrompt BYTE "The generated number of measures is: "; outputs the limited rng measure generated
 outMeasurePromptLen DWORD $-outMeasurePrompt
 errorMsg BYTE "An error has occured. Terminating."; error message produced if something goes wrong
+errorMsgLen DWORD $-errorMsg
 segmentNumOobErr BYTE "The segment number (in ESI) is out of bounds!"; tells if user segment is out of bounds
 measureNumOobErr BYTE "The message number (in BL) is out of bounds!"; tells if user message is out of bounds
 velocityOorErr BYTE "The veloctiy (in BL) is too high!"; tells if inputted time is out of bounds
