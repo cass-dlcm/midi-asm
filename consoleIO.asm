@@ -92,6 +92,12 @@ WriteConsoleA PROTO,
 	lpNumberOfCharsWritten : DWORD,
 	lpReserved : DWORD
 
+writeConsole PROC,
+	prompt:DWORD,
+	promptSize:DWORD
+	invoke WriteConsoleA, consoleOutHandle, prompt, promptSize, offset bytesWritten, 0
+	ret
+writeConsole ENDP
 ; ------------------------------------------------------------------------------
 ConsoleWriteHex PROC USES EAX ECX EDX,
 	num:DWORD
@@ -125,6 +131,7 @@ resetLoop:
 	dec ecx
 	jmp resetLoop
 done:
+	invoke writeConsole, offset crLfStr, 2
 	ret
 ConsoleWriteHex ENDP
 
@@ -191,10 +198,4 @@ readConsole PROC,
 	ret
 readConsole ENDP
 
-writeConsole PROC,
-	prompt:DWORD,
-	promptSize:DWORD
-	invoke WriteConsoleA, consoleOutHandle, prompt, promptSize, offset bytesWritten, 0
-	ret
-writeConsole ENDP
 END
